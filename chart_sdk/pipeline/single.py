@@ -20,6 +20,7 @@ def run_single(config: Config, client: VLClient, image_path: Path, progress=None
     data = image_path.read_bytes()
     store = SingleStore(config.cache_dir, data, image_path.name)
     r = store.record
+    r["image_hash"] = store.image_hash  # 前端/集成测试依赖此键（含缓存命中路径）
     if r.get("status") == "done":
         cb("done", 1, 1, "命中缓存")
         return r

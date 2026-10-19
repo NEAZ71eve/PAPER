@@ -104,5 +104,7 @@ def test_run_single(tmp_path):
     cfg.cache_dir = str(tmp_path / "cache")
     r = run_single(cfg, FakeClient(), img)
     assert r["status"] == "done"
+    assert "image_hash" in r
     r2 = run_single(cfg, FakeClient(), img)
     assert r2["status"] == "done"  # 命中缓存
+    assert "image_hash" in r2
