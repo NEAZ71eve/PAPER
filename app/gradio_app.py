@@ -102,6 +102,8 @@ def upload_paper(pdf_file, progress=gr.Progress()):
         get_client().health()
     except Exception:
         raise gr.Error(f"Ollama 不可达（{CONFIG.base_url}）。请运行: ollama pull {CONFIG.model} 并确认服务已启动")
+    if not get_client().model_available():
+        raise gr.Error(f"模型 {CONFIG.model} 未安装。请运行: ollama pull {CONFIG.model}，或设置环境变量 CHART_SDK_MODEL 指向已安装的模型")
     pdf_path = Path(pdf_file)
 
     def cb(stage, done, total, msg):
@@ -127,7 +129,7 @@ def page_panel(store: PaperStore, session: dict, page_no: int):
     img = draw_page_annotations(png, figs) if figs else Image.open(png)
     choices = [f'[{i}] {f["type"]} ({f["id"]})' for i, f in enumerate(figs, 1)]
     count = f"本页检测到 {len(figs)} 个图表" if figs else "本页未检测到目标类型图表"
-    return img, gr.update(choices=choices, value=choices[0] if choices else None), count
+    return img, gr.update(choices=choices, value=choices[0] if choices else None, visible=bool(figs)), count
 
 
 def select_page(page_label, session):
@@ -176,6 +178,8 @@ def run_single_ui(image, progress=gr.Progress()):
         get_client().health()
     except Exception:
         raise gr.Error(f"Ollama 不可达（{CONFIG.base_url}）。请运行: ollama pull {CONFIG.model}")
+    if not get_client().model_available():
+        raise gr.Error(f"模型 {CONFIG.model} 未安装。请运行: ollama pull {CONFIG.model}，或设置环境变量 CHART_SDK_MODEL 指向已安装的模型")
     path = Path(image) if isinstance(image, str) else Path(image.name) if hasattr(image, "name") else None
     if path is None or not path.exists():
         raise gr.Error("图片读取失败")

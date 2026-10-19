@@ -21,6 +21,7 @@ def generate_code(chart: dict, out_png: Path) -> str:
     title = repr(chart.get("title") or "")
     xlabel = repr((chart.get("x_axis") or {}).get("label") or "")
     ylabel = repr((chart.get("y_axis") or {}).get("label") or "")
+    out_png = Path(out_png).resolve()  # 子进程 cwd 为临时目录，相对路径会解析失败 → 强制绝对路径
     save = f'plt.savefig(r"{out_png}", bbox_inches="tight")\n'
     if ct == "line":
         body = f"series = {chart['series']!r}\n"

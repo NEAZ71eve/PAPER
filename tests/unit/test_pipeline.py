@@ -96,6 +96,30 @@ def test_pipeline_parse_error_isolated(tmp_path):
     assert session["figures"][0]["error"]
 
 
+class FlakyClient(FakeClient):
+    """首次 VL 调用抛 RuntimeError（网络抖动），其后正常。"""
+
+    def chat_image(self, prompt, image_bytes, **kw):
+        self.parse_calls += 1
+        if self.parse_calls == 1:
+            raise RuntimeError("VL 调用失败: connection reset")
+        return json.dumps(self.response)
+
+
+def test_pipeline_runtime_error_isolated(tmp_path):
+    _make_pdf(tmp_path / "d.pdf")
+    cfg = Config.from_env()
+    cfg.cache_dir = str(tmp_path / "cache")
+    client = FlakyClient()
+    pipe = PaperPipeline(cfg, client, detector=FakeDetector(), fallback=FakeDetector([]))
+    session = pipe.run(tmp_path / "d.pdf")  # 不应抛出
+    assert session["stage"] == "done"
+    assert session["figures"][0]["parse_status"] == "error"
+    assert "VL 调用失败" in session["figures"][0]["error"]
+    assert session["figures"][1]["parse_status"] == "done"
+    assert session["figures"][1]["render_status"] == "done"
+
+
 def test_run_single(tmp_path):
     from PIL import Image
     img = tmp_path / "in.png"

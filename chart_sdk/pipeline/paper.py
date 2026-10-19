@@ -13,8 +13,7 @@ from chart_sdk.config import Config
 from chart_sdk.inference.client import VLClient
 from chart_sdk.pdf.detector import BitmapFallbackDetector, FigureDetector, VLGroundingDetector
 from chart_sdk.pdf.render import crop_page_region, render_pages
-from chart_sdk.vision.parser import ParseError, parse_chart
-from chart_sdk.vision.validator import ValidationError
+from chart_sdk.vision.parser import parse_chart
 
 
 class PaperPipeline:
@@ -84,7 +83,7 @@ class PaperPipeline:
         fig["crop_path"] = f"figures/{fig['id']}/crop.png"
         try:
             chart = parse_chart(self.client, crop_path.read_bytes(), config=self.config)
-        except (ParseError, ValidationError) as e:
+        except Exception as e:  # noqa: BLE001 - 单图级隔离（含 VL 网络异常），失败不阻塞整篇
             fig["parse_status"] = "error"
             fig["error"] = str(e)
             return

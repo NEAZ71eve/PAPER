@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from chart_sdk.codegen.generator import generate_code
 
 
@@ -42,3 +44,11 @@ def test_unknown_type_raises(tmp_path):
     from chart_sdk.codegen.generator import CodeGenError
     with pytest.raises(CodeGenError):
         generate_code(_chart("pie"), tmp_path / "r.png")
+
+
+def test_relative_out_png_becomes_absolute():
+    chart = _chart("line", legend=["a"], series=[{"name": "a", "x": [1, 2], "y": [1.0, 2.0]}])
+    code = generate_code(chart, "relative/render.png")
+    savefig_line = next(ln for ln in code.splitlines() if "savefig" in ln)
+    path_str = savefig_line.split('r"')[1].split('"')[0]
+    assert Path(path_str).is_absolute()

@@ -27,6 +27,7 @@
 | `CHART_SDK_MAX_PAGES` | `30` | 最大处理页数 |
 | `CHART_SDK_EXEC_TIMEOUT` | `30` | 代码执行超时（秒） |
 | `CHART_SDK_VL_TIMEOUT` | `120` | VL 调用超时（秒） |
+| `CHART_SDK_CACHE_DIR` | `data/cache` | 缓存根目录（页面/图表渲染产物与 session 存放位置） |
 
 ## 目录
 
