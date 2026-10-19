@@ -156,7 +156,7 @@ data/cache/                    运行时缓存（gitignore）
 1. 上传 PDF → 计算 sha256 → 缓存目录 `data/cache/papers/<hash>/`；已有会话则断点续跑（跳过已完成阶段）
 2. 页面渲染：PyMuPDF 全页 150 DPI PNG；页数上限 30，超出截断并提示
 3. 图表检测：`VLGroundingDetector` 逐页推理，输出 bbox + 类型（一次推理同时完成定位与分类）；任一页 VL 调用异常时，该页降级 `BitmapFallbackDetector`（PyMuPDF `get_image_rects` 取嵌入位图 + VL 分类过滤）
-4. 批量预解析（后台线程，前端进度轮询）：每张裁剪图 → `vision.parser` → chart JSON → `validator` 校验（失败重试 1 次）→ `codegen.generator` 模板生成代码 → `executor` 子进程渲染复刻图
+4. 批量预解析（阻塞执行，`gr.Progress` 实时进度条——等价于后台进度反馈且实现更稳）：每张裁剪图 → `vision.parser` → chart JSON → `validator` 校验（失败重试 1 次）→ `codegen.generator` 模板生成代码 → `executor` 子进程渲染复刻图
 5. 全部结果写入 session.json；前端从缓存读取，点击零推理
 
 ### 6.2 单图模式
@@ -210,7 +210,7 @@ Python ≥ 3.10：`gradio`、`pymupdf`、`matplotlib`、`pillow`、`openai`（�
 1. SDK 骨架 + inference 客户端 + 单图解析链路（vision → validator → codegen → executor），先验证 VL 识别与代码生成可用
 2. PDF 模块：页面渲染 + FigureDetector（VL grounding 主实现 + 位图降级）+ 裁剪
 3. pipeline 论文编排 + 批量预解析 + 缓存（断点续跑）
-4. Gradio 前端：双 Tab、页面预览高亮、点击联动、进度轮询
+4. Gradio 前端：双 Tab、页面预览高亮、点击联动、实时进度条
 5. 样例论文入库 + 测试补齐 + selfcheck 脚本
 
 ## 12. 开源交付物
