@@ -12,6 +12,7 @@ class Config:
     vl_timeout: float
     cache_dir: str
     retry: int
+    api_port: int
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -24,4 +25,5 @@ class Config:
             vl_timeout=float(os.getenv("CHART_SDK_VL_TIMEOUT", "120")),
             cache_dir=os.getenv("CHART_SDK_CACHE_DIR", "data/cache"),
             retry=1,
+            api_port=int(os.getenv("CHART_SDK_API_PORT", "8000")),
         )

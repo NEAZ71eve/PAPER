@@ -18,3 +18,13 @@ def test_env_override(monkeypatch):
     c = Config.from_env()
     assert c.model == "qwen2.5vl:3b"
     assert c.dpi == 200
+
+
+def test_api_port_default(monkeypatch):
+    monkeypatch.delenv("CHART_SDK_API_PORT", raising=False)
+    assert Config.from_env().api_port == 8000
+
+
+def test_api_port_override(monkeypatch):
+    monkeypatch.setenv("CHART_SDK_API_PORT", "9000")
+    assert Config.from_env().api_port == 9000
