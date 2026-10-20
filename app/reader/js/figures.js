@@ -68,7 +68,7 @@ function stopPolling() { if (pollTimer) { clearInterval(pollTimer); pollTimer = 
 
 export async function redetectFigures() {
   if (!state.paper) return;
-  const g = gen, h = hash();
+  const g = ++gen, h = hash();
   try {
     await startDetect(h);
     if (g !== gen) return;

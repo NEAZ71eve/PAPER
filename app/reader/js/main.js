@@ -3,6 +3,8 @@ import { initViewer } from './viewer.js';
 import { initFigures } from './figures.js';
 import { initInk } from './ink.js';
 import { initComments } from './comments.js';
+import { initRibbon } from './ribbon.js';
+import { initToolbox } from './toolbox.js';
 
 function switchSideTab(name) {
   document.querySelectorAll('.side-tab').forEach((b) => b.classList.toggle('active', b.dataset.side === name));
@@ -16,4 +18,6 @@ window.addEventListener('DOMContentLoaded', () => {
   initFigures();
   initInk();
   initComments();
+  initRibbon();
+  initToolbox();
 });
