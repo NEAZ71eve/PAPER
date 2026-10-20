@@ -51,3 +51,10 @@ def test_invalid_structures_raise(tmp_path, bad):
     store = AnnotationStore(tmp_path)
     with pytest.raises(ValueError):
         store.save(bad)
+
+
+def test_save_creates_parent_dir(tmp_path):
+    """paper_root 尚未创建时也能保存（父目录自动创建）。"""
+    store = AnnotationStore(tmp_path / "papers" / "h1")
+    store.save({"version": 1, "pages": {"1": {"strokes": [STROKE], "comments": []}}})
+    assert (tmp_path / "papers" / "h1" / "annotations.json").exists()

@@ -84,4 +84,5 @@ class AnnotationStore:
                 _validate_stroke(s)
             for c in comments:
                 _validate_comment(c)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
         _atomic_write_json(self.path, {"version": 1, "pages": pages})

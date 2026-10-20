@@ -29,6 +29,7 @@ class PaperPipeline:
         """只渲染页面（上传 detect=false）：stage → ready，不做检测。"""
         cb = progress or (lambda stage, done, total, msg: None)
         store = self._render(pdf_path, cb)
+        store.session["figures"] = []
         store.session["stage"] = "ready"
         store.save()
         return store

@@ -222,3 +222,16 @@ def test_run_render_failure_sets_failed_stage(tmp_path):
     data = _json.loads(sess.read_text(encoding="utf-8"))
     assert data["stage"] == "failed"
     assert data.get("error")
+
+
+def test_render_only_clears_stale_figures(tmp_path):
+    """同一 PDF 先检测后仅渲染：figures 必须清空（detect=false 为纯阅读）。"""
+    _make_pdf(tmp_path / "stale.pdf")
+    cfg = Config.from_env()
+    cfg.cache_dir = str(tmp_path / "cache")
+    pipe = PaperPipeline(cfg, FakeClient(), detector=FakeDetector(), fallback=FakeDetector([]))
+    store = pipe.render_and_detect(tmp_path / "stale.pdf")
+    assert len(store.session["figures"]) == 2
+    store2 = pipe.render_only(tmp_path / "stale.pdf")  # 复用同一 hash 会话
+    assert store2.session["figures"] == []
+    assert store2.session["stage"] == "ready"
