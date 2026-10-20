@@ -1,6 +1,7 @@
 // 手写墨迹：canvas 笔画采集 / 荧光笔半透明 / 橡皮点选删整条 / 撤销重做双栈 / 清空本页（设计文档 4.3）
 import { state, on, uid, toast } from './state.js';
 import { pageAnnot, prunePage, scheduleSave } from './annotate.js';
+import { gotoPage } from './viewer.js';  // 跨页撤销时跳转到被改动页，使改动可见
 
 let canvas, ctx, drawing = false, pts = [];
 
@@ -22,7 +23,9 @@ function pxPerPt() {
 
 function toNorm(e) {
   const r = canvas.getBoundingClientRect();
-  return [(e.clientX - r.left) / canvas.width, (e.clientY - r.top) / canvas.height];
+  const x = (e.clientX - r.left) / canvas.width;
+  const y = (e.clientY - r.top) / canvas.height;
+  return [Math.min(1, Math.max(0, x)), Math.min(1, Math.max(0, y))];
 }
 
 function onDown(e) {
@@ -127,6 +130,7 @@ export function undoInk() {
   const op = state.undoStack.pop();
   if (!op) { toast('没有可撤销的操作'); return; }
   applyInverse(op);
+  if (op.page !== state.page) gotoPage(op.page);
   state.redoStack.push(op);
   prunePage(op.page);
   scheduleSave();
@@ -137,7 +141,9 @@ export function redoInk() {
   const op = state.redoStack.pop();
   if (!op) { toast('没有可重做的操作'); return; }
   applyOp(op);
+  if (op.page !== state.page) gotoPage(op.page);
   state.undoStack.push(op);
+  prunePage(op.page);
   scheduleSave();
   redrawAll();
 }

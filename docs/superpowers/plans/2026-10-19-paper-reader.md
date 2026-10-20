@@ -2176,6 +2176,8 @@ git commit -m "feat: 图表图框层与按需解析面板（轮询/四件套/失
 
 - [ ] **Step 1: 创建 app/reader/js/ink.js**
 
+> 注：toNorm 必须夹取坐标到 [0,1]——服务端严格校验坐标范围，越界会使整份标注 PUT 400。
+
 ```javascript
 // 手写墨迹：canvas 笔画采集 / 荧光笔半透明 / 橡皮点选删整条 / 撤销重做双栈 / 清空本页（设计文档 4.3）
 import { state, on, uid, toast } from './state.js';
@@ -2201,7 +2203,9 @@ function pxPerPt() {
 
 function toNorm(e) {
   const r = canvas.getBoundingClientRect();
-  return [(e.clientX - r.left) / canvas.width, (e.clientY - r.top) / canvas.height];
+  const x = (e.clientX - r.left) / canvas.width;
+  const y = (e.clientY - r.top) / canvas.height;
+  return [Math.min(1, Math.max(0, x)), Math.min(1, Math.max(0, y))];
 }
 
 function onDown(e) {

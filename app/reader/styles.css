@@ -57,6 +57,7 @@ button:disabled { opacity: .45; cursor: default; }
 #page-stage[data-mode="ink"] #ink-canvas { cursor: crosshair; }
 #page-stage[data-mode="ink"] #figure-layer,
 #page-stage[data-mode="ink"] #comment-layer { pointer-events: none; }
+#page-stage[data-mode="ink"] .comment-anchor { pointer-events: none; }
 #page-stage[data-mode="read"] #ink-canvas { pointer-events: none; }
 #page-stage[data-mode="comment"] #figure-layer,
 #page-stage[data-mode="comment"] #ink-canvas { pointer-events: none; }
