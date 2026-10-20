@@ -32,7 +32,7 @@ class FakeClient:
 
 class FakeDetector:
     def __init__(self, boxes=None):
-        self.boxes = boxes or [([50, 50, 400, 300], "line")]
+        self.boxes = [([50, 50, 400, 300], "line")] if boxes is None else boxes
         self.detect_calls = 0
 
     def detect_page(self, page_png, page, page_no):
@@ -132,3 +132,75 @@ def test_run_single(tmp_path):
     r2 = run_single(cfg, FakeClient(), img)
     assert r2["status"] == "done"  # 命中缓存
     assert "image_hash" in r2
+
+
+def test_render_only(tmp_path):
+    _make_pdf(tmp_path / "ro.pdf")
+    cfg = Config.from_env()
+    cfg.cache_dir = str(tmp_path / "cache")
+    pipe = PaperPipeline(cfg, FakeClient(), detector=FakeDetector(), fallback=FakeDetector([]))
+    store = pipe.render_only(tmp_path / "ro.pdf")
+    assert store.session["stage"] == "ready"
+    assert store.session["figures"] == []
+    assert len(store.session["pages"]) == 2
+
+
+def test_render_and_detect_no_parse(tmp_path):
+    _make_pdf(tmp_path / "rd.pdf")
+    cfg = Config.from_env()
+    cfg.cache_dir = str(tmp_path / "cache")
+    client = FakeClient()
+    pipe = PaperPipeline(cfg, client, detector=FakeDetector(), fallback=FakeDetector([]))
+    store = pipe.render_and_detect(tmp_path / "rd.pdf")
+    s = store.session
+    assert s["stage"] == "ready"
+    assert len(s["pages"]) == 2
+    assert len(s["figures"]) == 2  # 两页各一张
+    assert all(f["parse_status"] == "pending" for f in s["figures"])
+    assert client.parse_calls == 0  # 检测阶段不做数据解析
+
+
+def test_parse_figure_on_demand(tmp_path):
+    _make_pdf(tmp_path / "od.pdf")
+    cfg = Config.from_env()
+    cfg.cache_dir = str(tmp_path / "cache")
+    client = FakeClient()
+    pipe = PaperPipeline(cfg, client, detector=FakeDetector(), fallback=FakeDetector([]))
+    store = pipe.render_and_detect(tmp_path / "od.pdf")
+    fid = store.session["figures"][0]["id"]
+    result = pipe.parse_figure(store, fid)
+    assert result["parse_status"] == "done"
+    assert result["render_status"] == "done"
+    assert result["chart"]["chart_type"] == "line"
+    assert result["crop_path"] and result["code_path"] and result["render_path"]
+    assert client.parse_calls == 1
+    # 缓存命中：再次解析零推理
+    result2 = pipe.parse_figure(store, fid)
+    assert result2["parse_status"] == "done"
+    assert client.parse_calls == 1
+    # 其他图表不受影响
+    assert store.session["figures"][1]["parse_status"] == "pending"
+
+
+def test_parse_figure_missing(tmp_path):
+    import pytest
+    _make_pdf(tmp_path / "ms.pdf")
+    cfg = Config.from_env()
+    cfg.cache_dir = str(tmp_path / "cache")
+    pipe = PaperPipeline(cfg, FakeClient(), detector=FakeDetector(), fallback=FakeDetector([]))
+    store = pipe.render_only(tmp_path / "ms.pdf")
+    with pytest.raises(KeyError):
+        pipe.parse_figure(store, "p1-f9")
+
+
+def test_detect_redetect_clears(tmp_path):
+    _make_pdf(tmp_path / "re.pdf")
+    cfg = Config.from_env()
+    cfg.cache_dir = str(tmp_path / "cache")
+    pipe = PaperPipeline(cfg, FakeClient(), detector=FakeDetector(), fallback=FakeDetector([]))
+    store = pipe.render_and_detect(tmp_path / "re.pdf")
+    assert len(store.session["figures"]) == 2
+    pipe2 = PaperPipeline(cfg, FakeClient(), detector=FakeDetector([]), fallback=FakeDetector([]))
+    pipe2.detect(store)  # 换无框检测器重新检测
+    assert store.session["stage"] == "ready"
+    assert store.session["figures"] == []
