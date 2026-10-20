@@ -2,6 +2,7 @@
 import importlib
 import io
 import json
+import threading
 import time
 
 import fitz
@@ -69,7 +70,7 @@ def _wait_ready(client, h, timeout=15):
     st = {}
     while time.time() < deadline:
         st = client.get(f"/api/papers/{h}/status").json()
-        if st["stage"] != "detecting":
+        if st["stage"] in ("ready", "failed", "done"):
             return st
         time.sleep(0.2)
     return st
@@ -95,6 +96,24 @@ def test_upload_detect_then_figures_and_pages(api):
     r = client.get(f"/api/papers/{h}/pages/1.png")
     assert r.status_code == 200 and r.headers["content-type"] == "image/png"
     assert client.get(f"/api/papers/{h}/pages/9.png").status_code == 404
+
+
+def test_status_reports_detecting_while_running(api):
+    client, server = api
+    gate = threading.Event()
+
+    class BlockingDetector:
+        def detect_page(self, page_png, page, page_no):
+            gate.wait(5)
+            return FakeDetector().detect_page(page_png, page, page_no)
+
+    server.pipeline.detector = BlockingDetector()
+    h = _upload(client)["pdf_hash"]
+    st = client.get(f"/api/papers/{h}/status").json()
+    assert st["stage"] == "detecting"  # 检测线程被阻塞，但 stage 必须已是 detecting
+    gate.set()
+    st = _wait_ready(client, h)
+    assert st["stage"] == "ready"
 
 
 def test_parse_endpoint_offline_full_chain(api):

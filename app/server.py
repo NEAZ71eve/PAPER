@@ -1,4 +1,4 @@
-"""FastAPI 后端：论文阅读器 API + 静态托管（设计文档 6）。
+r"""FastAPI 后端：论文阅读器 API + 静态托管（设计文档 6）。
 
 启动：$env:CHART_SDK_MODEL="qwen2.5vl:3b" ; .venv\Scripts\python.exe -m uvicorn app.server:app --port 8000
 """
@@ -91,7 +91,8 @@ def paper_status(h: str):
     store = _open_store(h)
     s = store.session
     prog = _detect_progress.get(h, {"done": 0, "total": s.get("n_pages", 0)})
-    return {"stage": s.get("stage"), "detect_done": prog["done"], "detect_total": prog["total"],
+    stage = "detecting" if h in _detect_running else s.get("stage")
+    return {"stage": stage, "detect_done": prog["done"], "detect_total": prog["total"],
             "n_figures": len(s.get("figures", [])), "n_pages": s.get("n_pages", 0),
             "file_name": s.get("file_name"), "error": s.get("error")}
 

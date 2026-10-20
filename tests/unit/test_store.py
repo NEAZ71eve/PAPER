@@ -1,4 +1,5 @@
 import json
+import threading
 
 from chart_sdk.cache.store import PaperStore, SingleStore, content_hash
 
@@ -57,3 +58,26 @@ def test_paper_store_open_missing(tmp_path):
     from chart_sdk.cache.store import PaperStore
     with pytest.raises(KeyError):
         PaperStore.open(tmp_path / "cache", "0" * 64)
+
+
+def test_concurrent_save_and_open_serialized(tmp_path):
+    cache = tmp_path / "cache"
+    store = PaperStore(cache, b"pdf-bytes", "a.pdf")
+    store.save()
+    h = store.pdf_hash
+    errors = []
+
+    def worker():
+        try:
+            for _ in range(50):
+                store.save()
+                PaperStore.open(cache, h)
+        except Exception as e:  # noqa: BLE001
+            errors.append(e)
+
+    threads = [threading.Thread(target=worker) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert errors == []

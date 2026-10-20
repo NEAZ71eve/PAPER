@@ -2,11 +2,25 @@ from __future__ import annotations
 
 import hashlib
 import json
+import threading
 from pathlib import Path
 
 
 def content_hash(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+_session_locks: dict[str, threading.Lock] = {}
+_session_locks_guard = threading.Lock()
+
+
+def _session_lock(pdf_hash: str) -> threading.Lock:
+    with _session_locks_guard:
+        lk = _session_locks.get(pdf_hash)
+        if lk is None:
+            lk = threading.Lock()
+            _session_locks[pdf_hash] = lk
+        return lk
 
 
 def _atomic_write_json(path: Path, obj: dict) -> None:
@@ -28,13 +42,14 @@ class PaperStore:
         if not src.exists():
             src.write_bytes(pdf_bytes)
         sp = self.root / "session.json"
-        if sp.exists():
-            self.session = json.loads(sp.read_text(encoding="utf-8"))
-        else:
-            self.session = {
-                "pdf_hash": self.pdf_hash, "file_name": file_name, "n_pages": 0, "dpi": 0,
-                "stage": "detecting", "pages": [], "figures": [],
-            }
+        with _session_lock(self.pdf_hash):
+            if sp.exists():
+                self.session = json.loads(sp.read_text(encoding="utf-8"))
+            else:
+                self.session = {
+                    "pdf_hash": self.pdf_hash, "file_name": file_name, "n_pages": 0, "dpi": 0,
+                    "stage": "detecting", "pages": [], "figures": [],
+                }
 
     @classmethod
     def open(cls, cache_dir, pdf_hash: str) -> "PaperStore":
@@ -43,13 +58,15 @@ class PaperStore:
         obj.pdf_hash = pdf_hash
         obj.root = Path(cache_dir) / "papers" / pdf_hash
         sp = obj.root / "session.json"
-        if not sp.exists():
-            raise KeyError(f"会话不存在: {pdf_hash}")
-        obj.session = json.loads(sp.read_text(encoding="utf-8"))
+        with _session_lock(pdf_hash):
+            if not sp.exists():
+                raise KeyError(f"会话不存在: {pdf_hash}")
+            obj.session = json.loads(sp.read_text(encoding="utf-8"))
         return obj
 
     def save(self) -> None:
-        _atomic_write_json(self.root / "session.json", self.session)
+        with _session_lock(self.pdf_hash):
+            _atomic_write_json(self.root / "session.json", self.session)
 
     def figure_dir(self, fig_id: str) -> Path:
         d = self.root / "figures" / fig_id
