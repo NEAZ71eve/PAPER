@@ -4,6 +4,7 @@ r"""FastAPI 后端：论文阅读器 API + 静态托管（设计文档 6）。
 """
 from __future__ import annotations
 
+import mimetypes
 import tempfile
 import threading
 from pathlib import Path
@@ -185,6 +186,10 @@ def health():
 
 Path(config.cache_dir).mkdir(parents=True, exist_ok=True)
 READER_DIR.mkdir(parents=True, exist_ok=True)
+# Windows 注册表可能把 .js/.css 误判为 text/plain，导致浏览器拒绝执行 ES module；
+# 显式写入 strict 类型表以覆盖该误判。
+mimetypes.add_type("text/javascript", ".js", strict=True)
+mimetypes.add_type("text/css", ".css", strict=True)
 app.mount("/cache", StaticFiles(directory=config.cache_dir), name="cache")
 app.mount("/", StaticFiles(directory=READER_DIR, html=True), name="reader")
 
