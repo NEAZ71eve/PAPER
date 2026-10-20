@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import importlib
 import io
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -30,7 +31,8 @@ def c_python():
 
 
 def c_deps():
-    mods = ["gradio", "fitz", "matplotlib", "PIL", "openai", "numpy", "pandas", "pytest"]
+    mods = ["gradio", "fitz", "matplotlib", "PIL", "openai", "numpy", "pandas", "pytest",
+            "fastapi", "uvicorn", "multipart", "httpx"]
     for m in mods:
         importlib.import_module(m)
     return f"{len(mods)} 个依赖"
@@ -90,11 +92,41 @@ def c_vl_smoke():
     return f"识别 {len(chart['series'])} 条系列"
 
 
+def c_api_smoke():
+    import subprocess
+    import time
+    import urllib.request
+    port = 8123
+    env = dict(os.environ, CHART_SDK_CACHE_DIR=str(Path(tempfile.gettempdir()) / "selfcheck-api-cache"))
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "app.server:app", "--port", str(port)],
+        cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        deadline = time.time() + 30
+        while time.time() < deadline:
+            try:
+                with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/health", timeout=2) as r:
+                    import json as _json
+                    data = _json.loads(r.read())
+                assert "ollama" in data and "model_name" in data
+                return f"health 200, model={data['model_name']}"
+            except Exception:  # noqa: BLE001 - 服务尚未就绪
+                time.sleep(0.5)
+        raise RuntimeError("server 未在 30s 内就绪")
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(5)
+        except Exception:  # noqa: BLE001
+            proc.kill()
+
+
 def main():
     check("Python>=3.10", c_python)
     check("依赖导入", c_deps)
     check("离线链路(校验/代码/渲染)", c_offline_chain)
     check("页面渲染", c_render_pages)
+    check("API 冒烟", c_api_smoke)
     ollama_ok = False
     try:
         check("Ollama 与模型", c_ollama)
