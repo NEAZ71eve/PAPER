@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>论文阅读器</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header id="ribbon">
+  <div class="ribbon-tabs">
+    <button class="ribbon-tab active" data-tab="file">文件</button>
+    <button class="ribbon-tab" data-tab="annotate">批注</button>
+    <button class="ribbon-tab" data-tab="figures">图表</button>
+    <button class="ribbon-tab" data-tab="view">视图</button>
+    <button class="ribbon-tab" data-tab="toolbox">工具箱</button>
+  </div>
+  <div class="ribbon-panels">
+    <div class="ribbon-panel active" data-panel="file">
+      <button id="btn-import">导入论文</button>
+      <label class="check"><input type="checkbox" id="chk-detect" checked> 检测图表并标记</label>
+      <button id="btn-export" disabled>导出带标注副本</button>
+      <input type="file" id="file-input" accept="application/pdf" hidden>
+    </div>
+    <div class="ribbon-panel" data-panel="annotate">
+      <button data-tool="pen" class="tool-btn" title="手写笔">✏️ 笔</button>
+      <button data-tool="highlighter" class="tool-btn" title="荧光笔">🖍 荧光笔</button>
+      <button data-tool="eraser" class="tool-btn" title="橡皮">⌫ 橡皮</button>
+      <button data-tool="comment" class="tool-btn" title="文本批注">💬 批注</button>
+      <span class="sep"></span>
+      <input type="color" id="ink-color" value="#CC2936" title="颜色">
+      <input type="range" id="ink-width" min="1" max="8" step="0.5" value="2" title="粗细">
+      <span class="sep"></span>
+      <button id="btn-undo" title="撤销">↶ 撤销</button>
+      <button id="btn-redo" title="重做">↷ 重做</button>
+      <button id="btn-clear-page" title="清空本页">清空本页</button>
+    </div>
+    <div class="ribbon-panel" data-panel="figures">
+      <span id="detect-status" class="detect-status">未导入论文</span>
+      <button id="btn-redetect" disabled>重新检测</button>
+    </div>
+    <div class="ribbon-panel" data-panel="view">
+      <button id="btn-fit-width">适应宽度</button>
+      <button id="btn-fit-page">适应页面</button>
+      <select id="zoom-select">
+        <option value="0.5">50%</option>
+        <option value="0.75">75%</option>
+        <option value="1" selected>100%</option>
+        <option value="1.25">125%</option>
+        <option value="1.5">150%</option>
+        <option value="2">200%</option>
+      </select>
+    </div>
+    <div class="ribbon-panel" data-panel="toolbox">
+      <span class="dim">在右栏「工具箱」页签上传单张图表解析</span>
+      <button id="btn-show-toolbox">打开工具箱</button>
+    </div>
+  </div>
+  <div id="health-light" class="health-light" title="检查中…"></div>
+</header>
+<div id="main">
+  <aside id="thumbs"></aside>
+  <section id="reader">
+    <div id="empty-state">
+      <div class="empty-card">
+        <h1>论文阅读器</h1>
+        <p>点击 ribbon「导入论文」或拖拽 PDF 到此处</p>
+        <p class="dim">导入后可圈画批注，点击图表框按需解析复刻</p>
+      </div>
+    </div>
+    <div id="page-wrap" hidden>
+      <div id="page-stage" data-mode="read">
+        <img id="page-img" alt="">
+        <div id="figure-layer"></div>
+        <canvas id="ink-canvas"></canvas>
+        <div id="comment-layer"></div>
+      </div>
+      <div id="pager">
+        <button id="btn-prev">← 上一页</button>
+        <span id="page-indicator">- / -</span>
+        <button id="btn-next">下一页 →</button>
+      </div>
+    </div>
+  </section>
+  <aside id="sidebar">
+    <div class="side-tabs">
+      <button class="side-tab active" data-side="comments">批注</button>
+      <button class="side-tab" data-side="figure">图表</button>
+      <button class="side-tab" data-side="toolbox">工具箱</button>
+    </div>
+    <div class="side-panel active" data-panel="comments" id="comments-panel">
+      <p class="dim">导入论文后可添加批注</p>
+    </div>
+    <div class="side-panel" data-panel="figure" id="figure-panel">
+      <p class="dim">点击页面中的图表框开始解析</p>
+    </div>
+    <div class="side-panel" data-panel="toolbox" id="toolbox-panel">
+      <input type="file" id="single-input" accept="image/*" hidden>
+      <button id="btn-single-upload">上传图表图片</button>
+      <div id="single-result"></div>
+    </div>
+  </aside>
+</div>
+<div id="toast" hidden></div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+:root {
+  --brand: #CC2936;
+  --paper-bg: #F5F3EF;
+  --ribbon-bg: #FAFAF8;
+  --border: #E3E0DA;
+  --text: #2B2B2B;
+  --dim: #8A8578;
+  --ok: #2E7D32;
+  --err: #C62828;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; color: var(--text); background: var(--paper-bg); display: flex; flex-direction: column; overflow: hidden; }
+button { font: inherit; cursor: pointer; border: 1px solid var(--border); background: #fff; border-radius: 4px; padding: 4px 10px; }
+button:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
+button:disabled { opacity: .45; cursor: default; }
+.dim { color: var(--dim); }
+.error-text { color: var(--err); }
+
+/* ---- ribbon（Word 风格选项卡） ---- */
+#ribbon { background: var(--ribbon-bg); border-bottom: 1px solid var(--border); position: relative; }
+.ribbon-tabs { display: flex; gap: 2px; padding: 6px 12px 0; }
+.ribbon-tab { border: none; background: transparent; padding: 6px 14px; border-radius: 4px 4px 0 0; font-size: 13px; }
+.ribbon-tab.active { background: #fff; color: var(--brand); font-weight: 600; box-shadow: inset 0 -2px 0 var(--brand); }
+.ribbon-panels { background: #fff; border-top: 1px solid var(--border); }
+.ribbon-panel { display: none; align-items: center; gap: 8px; padding: 8px 12px; min-height: 44px; font-size: 13px; }
+.ribbon-panel.active { display: flex; }
+.ribbon-panel .sep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+.ribbon-panel .check { display: flex; align-items: center; gap: 4px; }
+.tool-btn.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+.health-light { position: absolute; top: 10px; right: 14px; width: 12px; height: 12px; border-radius: 50%; background: #bbb; cursor: help; }
+.health-light.ok { background: var(--ok); }
+.health-light.bad { background: var(--err); }
+.detect-status { color: var(--dim); }
+
+/* ---- 主区三栏 ---- */
+#main { flex: 1; display: grid; grid-template-columns: 150px 1fr 340px; min-height: 0; }
+#thumbs { overflow-y: auto; background: var(--ribbon-bg); border-right: 1px solid var(--border); padding: 8px; }
+.thumb { position: relative; margin-bottom: 10px; border: 2px solid transparent; border-radius: 3px; cursor: pointer; }
+.thumb img { width: 100%; display: block; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.thumb span { position: absolute; right: 3px; bottom: 3px; background: rgba(0,0,0,.6); color: #fff; font-size: 10px; padding: 0 4px; border-radius: 2px; }
+.thumb.active { border-color: var(--brand); }
+
+#reader { overflow: auto; position: relative; padding: 24px; }
+#reader.drag-over { outline: 3px dashed var(--brand); outline-offset: -8px; }
+#empty-state { height: 100%; display: flex; align-items: center; justify-content: center; }
+.empty-card { text-align: center; color: var(--dim); }
+.empty-card h1 { font-family: Georgia, "SimSun", serif; color: var(--text); font-size: 28px; margin: 0 0 8px; }
+#page-wrap { display: flex; flex-direction: column; align-items: center; min-height: 100%; }
+#page-stage { position: relative; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.25); }
+#page-img { display: block; width: 100%; height: 100%; user-select: none; }
+#figure-layer, #ink-canvas, #comment-layer { position: absolute; inset: 0; }
+#figure-layer { z-index: 2; }
+#ink-canvas { z-index: 3; }
+#comment-layer { z-index: 4; pointer-events: none; }
+#page-stage[data-mode="ink"] #ink-canvas { cursor: crosshair; }
+#page-stage[data-mode="ink"] #figure-layer,
+#page-stage[data-mode="ink"] #comment-layer { pointer-events: none; }
+#page-stage[data-mode="read"] #ink-canvas { pointer-events: none; }
+#page-stage[data-mode="comment"] #figure-layer,
+#page-stage[data-mode="comment"] #ink-canvas { pointer-events: none; }
+#page-stage[data-mode="comment"] #comment-layer { pointer-events: auto; }
+#comment-catcher { position: absolute; inset: 0; display: none; cursor: text; }
+#page-stage[data-mode="comment"] #comment-catcher { display: block; }
+#pager { display: flex; align-items: center; gap: 12px; padding: 12px; }
+
+/* 图表高亮框：未解析虚线 / 已解析实线 / 失败红框（设计文档 4.2） */
+.fig-box { position: absolute; border: 2px dashed rgba(204,41,54,.85); background: rgba(204,41,54,.07); cursor: pointer; }
+.fig-box:hover { background: rgba(204,41,54,.15); }
+.fig-box.status-done { border-style: solid; border-color: var(--ok); background: rgba(46,125,50,.07); }
+.fig-box.status-error { border-style: solid; border-color: var(--err); background: rgba(198,40,40,.08); }
+.fig-badge { position: absolute; top: -10px; left: -10px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--brand); color: #fff; font-size: 11px; line-height: 18px; text-align: center; padding: 0 4px; }
+.fig-box.status-done .fig-badge { background: var(--ok); }
+.fig-box.status-error .fig-badge { background: var(--err); }
+
+/* 批注锚点 */
+.comment-anchor { position: absolute; transform: translate(-50%, -50%); width: 20px; height: 20px; border-radius: 50%; background: var(--brand); color: #fff; font-size: 11px; line-height: 20px; text-align: center; cursor: pointer; pointer-events: auto; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.comment-anchor.resolved { background: #9e9e9e; }
+.comment-anchor.flash { outline: 3px solid rgba(204,41,54,.5); }
+
+/* ---- 右栏 ---- */
+#sidebar { background: #fff; border-left: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; }
+.side-tabs { display: flex; border-bottom: 1px solid var(--border); }
+.side-tab { flex: 1; border: none; background: var(--ribbon-bg); padding: 8px; font-size: 13px; border-radius: 0; }
+.side-tab.active { background: #fff; color: var(--brand); font-weight: 600; box-shadow: inset 0 -2px 0 var(--brand); }
+.side-panel { display: none; flex: 1; overflow-y: auto; padding: 10px; }
+.side-panel.active { display: block; }
+
+.comment-card { border: 1px solid var(--border); border-radius: 6px; padding: 8px; margin-bottom: 8px; }
+.comment-card.flash { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(204,41,54,.2); }
+.comment-card.resolved { opacity: .6; background: #fafafa; }
+.comment-head { font-size: 12px; color: var(--dim); margin-bottom: 6px; }
+.comment-card textarea { width: 100%; resize: vertical; border: 1px solid var(--border); border-radius: 4px; padding: 6px; font: inherit; font-size: 13px; }
+.comment-snippet { font-size: 13px; margin: 4px 0; }
+.comment-actions { display: flex; gap: 6px; margin-top: 6px; }
+.comment-actions button { font-size: 12px; padding: 2px 8px; }
+.comment-actions .danger:hover { border-color: var(--err); color: var(--err); }
+
+.result-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.result-tab { border: none; background: transparent; padding: 6px 10px; font-size: 13px; }
+.result-tab.active { color: var(--brand); font-weight: 600; box-shadow: inset 0 -2px 0 var(--brand); }
+.result-pane { display: none; }
+.result-pane.active { display: block; }
+.result-img { max-width: 100%; border: 1px solid var(--border); }
+.chart-title { font-weight: 600; font-size: 13px; }
+.data-table { border-collapse: collapse; width: 100%; font-size: 12px; margin-bottom: 10px; }
+.data-table th, .data-table td { border: 1px solid var(--border); padding: 3px 6px; text-align: right; }
+.data-table th { background: var(--ribbon-bg); }
+.code-block { background: #2b2b2b; color: #e8e8e8; font-size: 11px; padding: 10px; border-radius: 6px; overflow: auto; max-height: 420px; white-space: pre; }
+.copy-btn { margin-bottom: 6px; font-size: 12px; }
+
+#toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: rgba(30,30,30,.92); color: #fff; padding: 8px 18px; border-radius: 20px; font-size: 13px; z-index: 99; }
