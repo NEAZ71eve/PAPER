@@ -204,3 +204,21 @@ def test_detect_redetect_clears(tmp_path):
     pipe2.detect(store)  # 换无框检测器重新检测
     assert store.session["stage"] == "ready"
     assert store.session["figures"] == []
+
+
+def test_run_render_failure_sets_failed_stage(tmp_path):
+    """渲染失败（非 PDF 内容）时 run() 写回 stage=failed 后重抛（与旧版等价）。"""
+    import pytest
+    bad = tmp_path / "bad.pdf"
+    bad.write_bytes(b"not a pdf at all")
+    cfg = Config.from_env()
+    cfg.cache_dir = str(tmp_path / "cache")
+    pipe = PaperPipeline(cfg, FakeClient(), detector=FakeDetector(), fallback=FakeDetector([]))
+    with pytest.raises(Exception):
+        pipe.run(bad)
+    from pathlib import Path as _P
+    sess = (_P(cfg.cache_dir) / "papers" / list((_P(cfg.cache_dir) / "papers").iterdir())[0].name / "session.json")
+    import json as _json
+    data = _json.loads(sess.read_text(encoding="utf-8"))
+    assert data["stage"] == "failed"
+    assert data.get("error")

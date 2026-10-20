@@ -83,9 +83,10 @@ class PaperPipeline:
 
     def run(self, pdf_path: Path, progress=None) -> dict:
         cb = progress or (lambda stage, done, total, msg: None)
-        store = self._render(pdf_path, cb)
+        store = self._open_store(pdf_path)
         s = store.session
         try:
+            self._render_pages(store, cb)
             self._detect_figures(store, cb)
             figs = s["figures"]
             for i, fig in enumerate(figs):
@@ -106,10 +107,17 @@ class PaperPipeline:
 
     # ---- 内部 ----
 
-    def _render(self, pdf_path: Path, cb) -> PaperStore:
+    def _open_store(self, pdf_path: Path) -> PaperStore:
         pdf_path = Path(pdf_path)
         pdf_bytes = pdf_path.read_bytes()
-        store = PaperStore(self.config.cache_dir, pdf_bytes, pdf_path.name)
+        return PaperStore(self.config.cache_dir, pdf_bytes, pdf_path.name)
+
+    def _render(self, pdf_path: Path, cb) -> PaperStore:
+        store = self._open_store(pdf_path)
+        self._render_pages(store, cb)
+        return store
+
+    def _render_pages(self, store: PaperStore, cb) -> None:
         s = store.session
         if not s["pages"]:
             cb("detecting", 0, 1, f"渲染页面（最多 {self.config.max_pages} 页）")
@@ -117,7 +125,6 @@ class PaperPipeline:
             s["n_pages"] = len(s["pages"])
             s["dpi"] = self.config.dpi
             store.save()
-        return store
 
     def _detect_figures(self, store: PaperStore, cb) -> None:
         """检测全部页面（已有结果则跳过）；单页 VL 异常 → 该页降级（设计文档 6.1 第 3 步）。"""
