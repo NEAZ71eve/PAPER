@@ -4,6 +4,11 @@ import { getStatus, getFigures, parseFigure, startDetect } from './api.js';
 
 const $ = (id) => document.getElementById(id);
 let pollTimer = null;
+let gen = 0;                          // 论文代际：切论文后丢弃陈旧异步回调
+const MAX_POLL_FAILS = 5;             // 连续状态请求失败上限
+const MAX_POLL_MS = 15 * 60 * 1000;   // 兜底逃生：避免卡死时无限轮询（远大于正常最长检测时长，不误杀）
+let pollFails = 0;
+let pollStart = 0;
 
 export function initFigures() {
   on('paper-loaded', onPaperLoaded);
@@ -17,28 +22,45 @@ async function onPaperLoaded() {
   state.figures = [];
   resetFigurePanel();
   stopPolling();
+  const g = ++gen, h = hash();
   try {
-    const st = await getStatus(hash());
+    const st = await getStatus(h);
+    if (g !== gen) return;
     updateDetectStatus(st);
     if (st.stage === 'detecting') startPolling();
-    else await refreshFigures();
+    else await refreshFigures(h, g);
   } catch (e) {
+    if (g !== gen) return;
     $('detect-status').textContent = '状态获取失败';
   }
 }
 
 function startPolling() {
   stopPolling();
+  pollFails = 0;
+  pollStart = Date.now();
   pollTimer = setInterval(async () => {
+    const g = gen, h = hash();
     try {
-      const st = await getStatus(hash());
+      const st = await getStatus(h);
+      if (g !== gen) return;
+      pollFails = 0;
       updateDetectStatus(st);
       if (st.stage !== 'detecting') {
         stopPolling();
-        await refreshFigures();
+        await refreshFigures(h, g);
         if (st.stage === 'ready') toast(`检测完成，标记 ${st.n_figures} 张图表`);
+      } else if (Date.now() - pollStart > MAX_POLL_MS) {
+        stopPolling();
+        $('detect-status').textContent = '检测超时，可点「重新检测」';
       }
-    } catch (e) { /* 网络抖动下轮重试 */ }
+    } catch (e) {
+      if (g !== gen) return;
+      if (++pollFails >= MAX_POLL_FAILS) {
+        stopPolling();
+        $('detect-status').textContent = '状态获取失败，可点「重新检测」';
+      }
+    }
   }, 1000);
 }
 
@@ -46,21 +68,24 @@ function stopPolling() { if (pollTimer) { clearInterval(pollTimer); pollTimer = 
 
 export async function redetectFigures() {
   if (!state.paper) return;
+  const g = gen, h = hash();
   try {
-    await startDetect(hash());
+    await startDetect(h);
+    if (g !== gen) return;
     $('detect-status').textContent = '检测中…';
     state.figures = [];
     renderBoxes();
     startPolling();
-  } catch (e) { toast(`重新检测失败: ${e.message}`); }
+  } catch (e) { if (g === gen) toast(`重新检测失败: ${e.message}`); }
 }
 
-async function refreshFigures() {
+async function refreshFigures(h = hash(), g = gen) {
   try {
-    const data = await getFigures(hash());
+    const data = await getFigures(h);
+    if (g !== gen) return;
     state.figures = data.figures;
     renderBoxes();
-  } catch (e) { toast('图表列表获取失败'); }
+  } catch (e) { if (g === gen) toast('图表列表获取失败'); }
 }
 
 function updateDetectStatus(st) {
@@ -99,9 +124,11 @@ async function onBoxClick(fig) {
   if (state.tool !== 'read') return;  // 批注/墨迹模式下不触发解析
   emit('switch-side-tab', 'figure');
   const panel = $('figure-panel');
+  const g = gen, h = hash();
   if (fig.parse_status !== 'done') panel.innerHTML = '<p class="dim">解析中…（约 10-20 秒）</p>';
   try {
-    const r = await parseFigure(hash(), fig.id);
+    const r = await parseFigure(h, fig.id);
+    if (g !== gen) return;
     fig.parse_status = r.parse_status;
     renderBoxes();
     if (r.parse_status === 'error') {
@@ -109,12 +136,15 @@ async function onBoxClick(fig) {
       return;
     }
     renderChartResult(panel, {
-      inputUrl: r.crop_path ? `/cache/papers/${hash()}/${r.crop_path}` : null,
+      inputUrl: r.crop_path ? `/cache/papers/${h}/${r.crop_path}` : null,
       chart: r.chart,
-      renderUrl: r.render_path ? `/cache/papers/${hash()}/${r.render_path}` : null,
-      codeUrl: r.code_path ? `/cache/papers/${hash()}/${r.code_path}` : null,
+      renderUrl: r.render_path ? `/cache/papers/${h}/${r.render_path}` : null,
+      codeUrl: r.code_path ? `/cache/papers/${h}/${r.code_path}` : null,
     });
   } catch (e) {
+    if (g !== gen) return;
+    fig.parse_status = 'error';
+    renderBoxes();
     showPanelError(panel, e.message, () => onBoxClick(fig));
   }
 }
