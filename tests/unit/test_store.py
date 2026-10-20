@@ -40,3 +40,20 @@ def test_session_json_schema_fields(tmp_path):
     s = PaperStore(tmp_path, b"y", "b.pdf")
     for key in ("pdf_hash", "file_name", "n_pages", "dpi", "stage", "pages", "figures"):
         assert key in s.session
+
+
+def test_paper_store_open(tmp_path):
+    from chart_sdk.cache.store import PaperStore
+    store = PaperStore(tmp_path / "cache", b"fake-pdf-bytes", "a.pdf")
+    store.save()
+    again = PaperStore.open(tmp_path / "cache", store.pdf_hash)
+    assert again.pdf_hash == store.pdf_hash
+    assert again.root == store.root
+    assert again.session["file_name"] == "a.pdf"
+
+
+def test_paper_store_open_missing(tmp_path):
+    import pytest
+    from chart_sdk.cache.store import PaperStore
+    with pytest.raises(KeyError):
+        PaperStore.open(tmp_path / "cache", "0" * 64)

@@ -36,6 +36,18 @@ class PaperStore:
                 "stage": "detecting", "pages": [], "figures": [],
             }
 
+    @classmethod
+    def open(cls, cache_dir, pdf_hash: str) -> "PaperStore":
+        """按 hash 重开已有会话（阅读器 API 用）；不存在抛 KeyError。"""
+        obj = cls.__new__(cls)
+        obj.pdf_hash = pdf_hash
+        obj.root = Path(cache_dir) / "papers" / pdf_hash
+        sp = obj.root / "session.json"
+        if not sp.exists():
+            raise KeyError(f"会话不存在: {pdf_hash}")
+        obj.session = json.loads(sp.read_text(encoding="utf-8"))
+        return obj
+
     def save(self) -> None:
         _atomic_write_json(self.root / "session.json", self.session)
 
