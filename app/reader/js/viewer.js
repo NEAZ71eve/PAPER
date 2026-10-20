@@ -1,7 +1,7 @@
 // 阅读画布：导入 / 页面渲染 / 翻页 / 缩放 / 缩略图导航（设计文档 4.1、4.2）
 import { state, emit, toast } from './state.js';
 import { uploadPaper } from './api.js';
-import { loadAnnotations } from './annotate.js';
+import { loadAnnotations, saveNow } from './annotate.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -33,6 +33,7 @@ export function initViewer() {
 
 export async function importFile(file) {
   toast('导入中：渲染页面…');
+  if (state.paper) { await saveNow(); }
   let info;
   try {
     info = await uploadPaper(file, $('chk-detect').checked);
@@ -42,6 +43,7 @@ export async function importFile(file) {
   }
   state.paper = info;
   state.page = 1;
+  loadedPage = 0;
   state.zoom = 1;
   state.fitMode = 'width';
   state.figures = [];
@@ -54,18 +56,25 @@ export async function importFile(file) {
   toast(`已导入 ${info.file_name}（${info.n_pages} 页${info.truncated ? '，超出页数上限已截断' : ''}）`);
 }
 
+let loadedPage = 0;
+
 export function renderPage() {
   if (!state.paper) return;
   const img = $('page-img');
   const n = state.page;
   img.onload = () => {
+    if (n !== state.page) return;
+    loadedPage = n;
     state.pageSize = { w: img.naturalWidth, h: img.naturalHeight };
     applyScale();
     updatePager();
     highlightThumb();
     emit('page-changed', n);
   };
-  img.onerror = () => toast(`第 ${n} 页加载失败`);
+  img.onerror = () => {
+    if (n !== state.page) return;
+    toast(`第 ${n} 页加载失败`);
+  };
   img.src = `/api/papers/${state.paper.pdf_hash}/pages/${n}.png`;
 }
 
@@ -92,7 +101,7 @@ export function setFitMode(mode) { state.fitMode = mode; applyScale(); }
 export function gotoPage(n) {
   if (!state.paper) return;
   const clamped = Math.min(Math.max(1, n), state.paper.n_pages);
-  if (clamped === state.page && $('page-img').src) return;
+  if (clamped === state.page && loadedPage === clamped) return;
   state.page = clamped;
   renderPage();
 }

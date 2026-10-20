@@ -5,6 +5,8 @@ import { getAnnotations, putAnnotations } from './api.js';
 let timer = null;
 
 export async function loadAnnotations() {
+  clearTimeout(timer);
+  timer = null;
   try {
     state.annotations = await getAnnotations(state.paper.pdf_hash);
   } catch (e) {
