@@ -127,7 +127,6 @@ button:disabled { opacity: .45; cursor: default; }
   box-shadow: inset 0 -2px 0 var(--w-accent);
 }
 .detect-status { color: var(--w-text-muted); }
-.thumb.active { border-color: var(--w-accent) !important; }
 
 /* ===== 主区三栏 ===== */
 #main { flex: 1; display: grid; grid-template-columns: 148px 1fr 300px; min-height: 0; }
