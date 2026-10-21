@@ -127,8 +127,6 @@ button:disabled { opacity: .45; cursor: default; }
   box-shadow: inset 0 -2px 0 var(--w-accent);
 }
 .detect-status { color: var(--w-text-muted); }
-.fig-box { border-color: var(--w-accent) !important; background: rgba(91,91,91,.06) !important; }
-.comment-anchor { background: var(--w-accent-strong) !important; }
 .thumb.active { border-color: var(--w-accent) !important; }
 
 /* ===== 主区三栏 ===== */
@@ -228,8 +226,8 @@ button:disabled { opacity: .45; cursor: default; }
 #pager { display: flex; align-items: center; gap: 12px; padding: 12px; }
 
 /* ---- 图表高亮框：未解析虚线 / 已解析实线 / 失败红框（设计文档 4.2） ---- */
-.fig-box { position: absolute; border: 2px dashed rgba(204,41,54,.85); background: rgba(204,41,54,.07); cursor: pointer; }
-.fig-box:hover { background: rgba(204,41,54,.15); }
+.fig-box { position: absolute; border: 2px dashed var(--w-accent); background: rgba(91,91,91,.06); cursor: pointer; }
+.fig-box:hover { background: rgba(91,91,91,.12); }
 .fig-box.status-done { border-style: solid; border-color: var(--ok); background: rgba(46,125,50,.07); }
 .fig-box.status-error { border-style: solid; border-color: var(--err); background: rgba(198,40,40,.08); }
 .fig-badge { position: absolute; top: -10px; left: -10px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--w-accent-strong); color: #fff; font-size: 11px; line-height: 18px; text-align: center; padding: 0 4px; }
@@ -237,7 +235,7 @@ button:disabled { opacity: .45; cursor: default; }
 .fig-box.status-error .fig-badge { background: var(--err); }
 
 /* ---- 批注锚点 ---- */
-.comment-anchor { position: absolute; transform: translate(-50%, -50%); width: 20px; height: 20px; border-radius: 50%; background: var(--brand); color: #fff; font-size: 11px; line-height: 20px; text-align: center; cursor: pointer; pointer-events: auto; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.comment-anchor { position: absolute; transform: translate(-50%, -50%); width: 20px; height: 20px; border-radius: 50%; background: var(--w-accent-strong); color: #fff; font-size: 11px; line-height: 20px; text-align: center; cursor: pointer; pointer-events: auto; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
 .comment-anchor.resolved { background: #9e9e9e; }
 .comment-anchor.flash { outline: 3px solid rgba(91,91,91,.5); }
 
