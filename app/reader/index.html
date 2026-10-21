@@ -7,64 +7,147 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<header id="ribbon">
-  <div class="ribbon-tabs">
-    <button class="ribbon-tab active" data-tab="file">文件</button>
-    <button class="ribbon-tab" data-tab="annotate">批注</button>
-    <button class="ribbon-tab" data-tab="figures">图表</button>
-    <button class="ribbon-tab" data-tab="view">视图</button>
-    <button class="ribbon-tab" data-tab="toolbox">工具箱</button>
+
+<!-- ===== 标题栏 ===== -->
+<header id="title-bar">
+  <div class="tb-left">
+    <span class="tb-brand">📄 论文阅读器</span>
+    <span id="tb-filename" class="tb-filename">未打开论文</span>
   </div>
-  <div class="ribbon-panels">
-    <div class="ribbon-panel active" data-panel="file">
-      <button id="btn-import">导入论文</button>
-      <label class="check"><input type="checkbox" id="chk-detect" checked> 检测图表并标记</label>
-      <button id="btn-export" disabled>导出带标注副本</button>
-      <input type="file" id="file-input" accept="application/pdf" hidden>
-    </div>
-    <div class="ribbon-panel" data-panel="annotate">
-      <button data-tool="pen" class="tool-btn" title="手写笔">✏️ 笔</button>
-      <button data-tool="highlighter" class="tool-btn" title="荧光笔">🖍 荧光笔</button>
-      <button data-tool="eraser" class="tool-btn" title="橡皮">⌫ 橡皮</button>
-      <button data-tool="comment" class="tool-btn" title="文本批注">💬 批注</button>
-      <span class="sep"></span>
-      <input type="color" id="ink-color" value="#CC2936" title="颜色">
-      <input type="range" id="ink-width" min="1" max="8" step="0.5" value="2" title="粗细">
-      <span class="sep"></span>
-      <button id="btn-undo" title="撤销">↶ 撤销</button>
-      <button id="btn-redo" title="重做">↷ 重做</button>
-      <button id="btn-clear-page" title="清空本页">清空本页</button>
-    </div>
-    <div class="ribbon-panel" data-panel="figures">
-      <span id="detect-status" class="detect-status">未导入论文</span>
-      <button id="btn-redetect" disabled>重新检测</button>
-    </div>
-    <div class="ribbon-panel" data-panel="view">
-      <button id="btn-fit-width">适应宽度</button>
-      <button id="btn-fit-page">适应页面</button>
-      <select id="zoom-select">
-        <option value="0.5">50%</option>
-        <option value="0.75">75%</option>
-        <option value="1" selected>100%</option>
-        <option value="1.25">125%</option>
-        <option value="1.5">150%</option>
-        <option value="2">200%</option>
-      </select>
-    </div>
-    <div class="ribbon-panel" data-panel="toolbox">
-      <span class="dim">在右栏「工具箱」页签上传单张图表解析</span>
-      <button id="btn-show-toolbox">打开工具箱</button>
-    </div>
+  <div class="tb-quick">
+    <button data-cmd="undo" title="撤销">↶</button>
+    <button data-cmd="redo" title="重做">↷</button>
+    <button data-cmd="export" title="导出带标注副本">⤓</button>
   </div>
   <div id="health-light" class="health-light" title="检查中…"></div>
 </header>
+
+<!-- ===== 页签条 ===== -->
+<nav id="tab-bar">
+  <button class="ribbon-tab" data-tab="file">文件</button>
+  <button class="ribbon-tab active" data-tab="start">开始</button>
+  <button class="ribbon-tab" data-tab="annotate">批注</button>
+  <button class="ribbon-tab" data-tab="figures">图表</button>
+  <button class="ribbon-tab" data-tab="view">视图</button>
+  <button class="ribbon-tab" data-tab="toolbox">工具箱</button>
+  <button id="btn-ribbon-collapse" class="ribbon-collapse" title="折叠功能区">⌄</button>
+</nav>
+
+<!-- ===== 分组 Ribbon ===== -->
+<section id="ribbon">
+  <!-- 文件: 点击页签时打开 Backstage，不渲染 ribbon-panel -->
+
+  <div class="ribbon-panel active" data-panel="start">
+    <div class="ribbon-group">
+      <div class="group-controls">
+        <button data-tool="pen" class="tool-btn" title="手写笔">✏️</button>
+        <button data-tool="highlighter" class="tool-btn" title="荧光笔">🖍</button>
+        <button data-tool="eraser" class="tool-btn" title="橡皮">⌫</button>
+        <button data-tool="comment" class="tool-btn" title="文本批注">💬</button>
+      </div>
+      <span class="group-name">注释</span>
+    </div>
+    <div class="ribbon-group">
+      <div class="group-controls">
+        <input type="color" id="ink-color" value="#CC2936" title="颜色">
+        <input type="range" id="ink-width" min="1" max="8" step="0.5" value="2" title="粗细">
+      </div>
+      <span class="group-name">格式</span>
+    </div>
+    <div class="ribbon-group">
+      <div class="group-controls">
+        <button data-cmd="undo" id="btn-undo" title="撤销">↶ 撤销</button>
+        <button data-cmd="redo" id="btn-redo" title="重做">↷ 重做</button>
+        <button data-cmd="clear-page" id="btn-clear-page" title="清空本页">清空本页</button>
+      </div>
+      <span class="group-name">编辑</span>
+    </div>
+  </div>
+
+  <div class="ribbon-panel" data-panel="annotate">
+    <div class="ribbon-group">
+      <div class="group-controls">
+        <button data-tool="pen" class="tool-btn" title="笔">✏️ 笔</button>
+        <button data-tool="highlighter" class="tool-btn" title="荧光笔">🖍 荧光笔</button>
+        <button data-tool="eraser" class="tool-btn" title="橡皮">⌫ 橡皮</button>
+        <button data-tool="comment" class="tool-btn" title="批注">💬 批注</button>
+      </div>
+      <span class="group-name">墨迹</span>
+    </div>
+    <div class="ribbon-group">
+      <div class="group-controls">
+        <button data-cmd="clear-page">清空本页</button>
+      </div>
+      <span class="group-name">管理</span>
+    </div>
+    <div class="ribbon-group">
+      <div class="group-controls">
+        <button data-cmd="toggle-comments" id="btn-toggle-comments">批注窗格</button>
+      </div>
+      <span class="group-name">窗格</span>
+    </div>
+  </div>
+
+  <div class="ribbon-panel" data-panel="figures">
+    <div class="ribbon-group">
+      <div class="group-controls">
+        <span id="detect-status" class="detect-status">未导入论文</span>
+        <button data-cmd="redetect" id="btn-redetect" disabled>重新检测</button>
+      </div>
+      <span class="group-name">检测</span>
+    </div>
+    <div class="ribbon-group">
+      <div class="group-controls">
+        <ul id="figure-list" class="figure-list" hidden></ul>
+      </div>
+      <span class="group-name">导航</span>
+    </div>
+  </div>
+
+  <div class="ribbon-panel" data-panel="view">
+    <div class="ribbon-group">
+      <div class="group-controls">
+        <button data-cmd="fit-width" id="btn-fit-width">适应宽度</button>
+        <button data-cmd="fit-page" id="btn-fit-page">适应页面</button>
+        <select id="zoom-select">
+          <option value="0.5">50%</option>
+          <option value="0.75">75%</option>
+          <option value="1" selected>100%</option>
+          <option value="1.25">125%</option>
+          <option value="1.5">150%</option>
+          <option value="2">200%</option>
+        </select>
+      </div>
+      <span class="group-name">显示比例</span>
+    </div>
+    <div class="ribbon-group">
+      <div class="group-controls">
+        <button data-cmd="toggle-thumbs" id="btn-toggle-thumbs">缩略图窗格</button>
+        <button data-cmd="toggle-comments">批注窗格</button>
+      </div>
+      <span class="group-name">窗格</span>
+    </div>
+  </div>
+
+  <div class="ribbon-panel" data-panel="toolbox">
+    <div class="ribbon-group">
+      <div class="group-controls">
+        <span class="dim">在右栏「工具箱」页签上传单张图表解析</span>
+        <button data-cmd="open-toolbox" id="btn-show-toolbox">打开工具箱</button>
+      </div>
+      <span class="group-name">单图解析</span>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 主区三栏 ===== -->
 <div id="main">
   <aside id="thumbs"></aside>
   <section id="reader">
     <div id="empty-state">
       <div class="empty-card">
         <h1>论文阅读器</h1>
-        <p>点击 ribbon「导入论文」或拖拽 PDF 到此处</p>
+        <p>点击「文件 → 导入论文」或拖拽 PDF 到此处</p>
         <p class="dim">导入后可圈画批注，点击图表框按需解析复刻</p>
       </div>
     </div>
@@ -74,11 +157,6 @@
         <div id="figure-layer"></div>
         <canvas id="ink-canvas"></canvas>
         <div id="comment-layer"></div>
-      </div>
-      <div id="pager">
-        <button id="btn-prev">← 上一页</button>
-        <span id="page-indicator">- / -</span>
-        <button id="btn-next">下一页 →</button>
       </div>
     </div>
   </section>
@@ -101,6 +179,58 @@
     </div>
   </aside>
 </div>
+
+<!-- ===== Backstage ===== -->
+<div id="backstage" hidden>
+  <div class="bs-nav">
+    <button data-bs="close">返回</button>
+    <button data-bs="open" class="active">打开</button>
+    <button data-bs="export">导出</button>
+    <button data-bs="about">关于</button>
+  </div>
+  <div class="bs-body">
+    <section data-bs-panel="open" class="active">
+      <h3>导入论文</h3>
+      <button id="btn-import">选择 PDF</button>
+      <label class="check"><input type="checkbox" id="chk-detect" checked> 导入时检测图表并标记</label>
+      <input type="file" id="file-input" accept="application/pdf" hidden>
+    </section>
+    <section data-bs-panel="export">
+      <h3>输出</h3>
+      <button id="btn-export" disabled>导出带标注副本</button>
+      <p class="dim">导出为 PDF，包含墨迹、批注锚点与文本</p>
+    </section>
+    <section data-bs-panel="about">
+      <h3>关于</h3>
+      <p class="dim">论文阅读器 · Word 风格界面 · 后端 FastAPI + Ollama qwen2.5vl:3b</p>
+    </section>
+  </div>
+</div>
+
+<!-- ===== 状态栏 ===== -->
+<footer id="status-bar">
+  <div class="sb-left">
+    <span id="page-indicator">第 - / 共 - 页</span>
+    <span class="sb-sep">·</span>
+    <span id="sb-figures">0 张图表</span>
+    <span class="sb-sep">·</span>
+    <span id="sb-comments">0 条批注</span>
+  </div>
+  <div class="sb-center">
+    <button data-cmd="prev" id="btn-prev" title="上一页">‹</button>
+    <button data-cmd="next" id="btn-next" title="下一页">›</button>
+  </div>
+  <div class="sb-right">
+    <button data-cmd="toggle-thumbs" title="缩略图">▦</button>
+    <button data-cmd="toggle-comments" title="批注窗格">🗨</button>
+    <span class="sb-sep">|</span>
+    <button data-cmd="zoom-out" title="缩小">–</button>
+    <input type="range" id="zoom-slider" min="0.25" max="3" step="0.25" value="1">
+    <button data-cmd="zoom-in" title="放大">+</button>
+    <span id="zoom-pct">100%</span>
+  </div>
+</footer>
+
 <div id="toast" hidden></div>
 <script type="module" src="js/main.js"></script>
 </body>
