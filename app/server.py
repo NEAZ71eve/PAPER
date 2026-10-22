@@ -73,6 +73,8 @@ def upload_paper(file: UploadFile = File(...), detect: bool = Form(True)):
     store0 = PaperStore(config.cache_dir, data, file.filename or "paper.pdf")
     src = store0.root / "source.pdf"
     store = pipeline.render_only(src)  # 页面渲染同步完成（秒级）
+    store.session["file_name"] = file.filename or "paper.pdf"
+    store.save()
     with fitz.open(src) as doc:
         truncated = len(doc) > config.max_pages
     if detect:
@@ -152,7 +154,7 @@ def export_paper(h: str):
         out = export_annotated(store.root / "source.pdf", store.root, store.root / "exports", dpi=config.dpi)
     except Exception as e:  # noqa: BLE001
         raise HTTPException(500, f"导出失败: {e}")
-    return FileResponse(out, media_type="application/pdf", filename=out.name)
+    return FileResponse(out, media_type="application/pdf", filename=f"annotated-{store.session['file_name']}")
 
 
 @app.post("/api/singles/parse")

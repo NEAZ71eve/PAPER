@@ -35,10 +35,27 @@ def iou(a: list, b: list) -> float:
     return inter / union if union > 0 else 0.0
 
 
-def dedup_bboxes(items: list, thr: float = 0.7) -> list:
-    """按顺序保留，与已保留项 IoU>thr 的丢弃（items 需有 bbox_px 属性）。"""
+def _area(bbox: list) -> int:
+    return max(0, bbox[2] - bbox[0]) * max(0, bbox[3] - bbox[1])
+
+
+def overlap_ratio(a: list, b: list) -> float:
+    """交叠面积 / 较小框面积；接近 1 表示一个框被另一个框包含。"""
+    ix0, iy0 = max(a[0], b[0]), max(a[1], b[1])
+    ix1, iy1 = min(a[2], b[2]), min(a[3], b[3])
+    inter = max(0, ix1 - ix0) * max(0, iy1 - iy0)
+    smaller = min(_area(a), _area(b))
+    return inter / smaller if smaller else 0.0
+
+
+def dedup_bboxes(items: list, thr: float = 0.7, containment: float = 0.85) -> list:
+    """去重：IoU 高或包含度高视为同一图框；保留面积较大者，按阅读顺序输出。"""
     kept: list = []
-    for it in items:
-        if all(iou(it.bbox_px, k.bbox_px) <= thr for k in kept):
+    for it in sorted(items, key=lambda x: _area(x.bbox_px), reverse=True):
+        if all(
+            iou(it.bbox_px, k.bbox_px) <= thr and overlap_ratio(it.bbox_px, k.bbox_px) < containment
+            for k in kept
+        ):
             kept.append(it)
+    kept.sort(key=lambda x: (x.bbox_px[1], x.bbox_px[0]))
     return kept

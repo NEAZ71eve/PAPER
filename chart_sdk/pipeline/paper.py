@@ -31,6 +31,7 @@ class PaperPipeline:
         store = self._render(pdf_path, cb)
         store.session["figures"] = []
         store.session["stage"] = "ready"
+        store.session.pop("error", None)
         store.save()
         return store
 
@@ -47,6 +48,7 @@ class PaperPipeline:
         s = store.session
         s["stage"] = "detecting"
         s["figures"] = []
+        s.pop("error", None)
         store.save()
         try:
             self._detect_figures(store, cb)
@@ -141,6 +143,8 @@ class PaperPipeline:
                 try:
                     figs = self.detector.detect_page(page_png, doc[p["page"] - 1], p["page"])
                 except Exception:  # noqa: BLE001
+                    figs = []
+                if not figs:
                     figs = self.fallback.detect_page(page_png, doc[p["page"] - 1], p["page"])
                 figures.extend({**asdict(f), "parse_status": "pending", "render_status": "pending"} for f in figs)
         s["figures"] = figures
@@ -164,6 +168,7 @@ class PaperPipeline:
             fig["error"] = str(e)
             return
         fig["parse_status"] = "done"
+        fig.pop("error", None)
         chart_path = fdir / "chart.json"
         chart_path.write_text(json.dumps(chart, ensure_ascii=False, indent=2), encoding="utf-8")
         fig["chart_json_path"] = f"figures/{fig['id']}/chart.json"

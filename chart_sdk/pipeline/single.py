@@ -8,8 +8,7 @@ from chart_sdk.codegen.executor import CodeExecError, execute_code
 from chart_sdk.codegen.generator import generate_code
 from chart_sdk.config import Config
 from chart_sdk.inference.client import VLClient
-from chart_sdk.vision.parser import ParseError, parse_chart
-from chart_sdk.vision.validator import ValidationError
+from chart_sdk.vision.parser import parse_chart
 
 _MIME = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
 
@@ -30,12 +29,13 @@ def run_single(config: Config, client: VLClient, image_path: Path, progress=None
     mime = _MIME.get(image_path.suffix.lower(), "image/png")
     try:
         chart = parse_chart(client, data, mime=mime, config=config)
-    except (ParseError, ValidationError) as e:
+    except Exception as e:  # noqa: BLE001 - 含 VL 网络异常，工具箱失败优雅展示
         r["status"] = "error"
         r["error"] = str(e)
         store.save()
         return r
     r["chart"] = chart
+    r.pop("error", None)
     code = generate_code(chart, store.root / "render.png")
     (store.root / "code.py").write_text(code, encoding="utf-8")
     r["code_path"] = "code.py"

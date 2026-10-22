@@ -37,6 +37,26 @@ def generate_code(chart: dict, out_png: Path) -> str:
         body += 'ax.set_xticklabels([str(v) for v in xt])\n'
         if len(chart["series"]) > 1:
             body += "ax.legend()\n"
+    elif ct == "combo":
+        body = f"series = {chart['series']!r}\n"
+        body += "categories = list(dict.fromkeys(x for s in series for x in s['x']))\n"
+        body += "xs = np.arange(len(categories))\n"
+        body += "bar_count = sum(s['kind'] == 'bar' for s in series)\nbar_index = 0\n"
+        body += "ax_right = ax.twinx() if any(s['axis'] == 'right' for s in series) else ax\n"
+        body += "for s in series:\n    target = ax_right if s['axis'] == 'right' else ax\n"
+        body += "    sx = np.array([categories.index(x) for x in s['x']])\n"
+        body += "    if s['kind'] == 'bar':\n"
+        body += "        width = 0.8 / max(1, bar_count)\n"
+        body += "        offset = (bar_index - (bar_count - 1) / 2) * width\n"
+        body += "        target.bar(sx + offset, s['y'], width, label=s.get('name') or '')\n"
+        body += "        bar_index += 1\n"
+        body += "    else:\n        target.plot(sx, s['y'], marker='o', label=s.get('name') or '')\n"
+        body += "ax.set_xticks(xs)\nax.set_xticklabels([str(v) for v in categories])\n"
+        body += "handles, labels = ax.get_legend_handles_labels()\n"
+        body += "if ax_right is not ax:\n    right_handles, right_labels = ax_right.get_legend_handles_labels()\n    handles += right_handles\n    labels += right_labels\n"
+        body += "if handles:\n    ax.legend(handles, labels)\n"
+        right_label = repr((chart.get("y_axis_right") or {}).get("label") or "")
+        body += f"if ax_right is not ax:\n    ax_right.set_ylabel({right_label})\n"
     elif ct == "heatmap":
         hm = chart["heatmap"]
         body = f"matrix = np.array({hm['matrix']!r}, dtype=float)\n"

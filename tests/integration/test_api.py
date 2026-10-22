@@ -4,6 +4,7 @@ import io
 import json
 import threading
 import time
+from urllib.parse import unquote
 
 import fitz
 import pytest
@@ -178,6 +179,42 @@ def test_single_parse_endpoint(api):
     assert data["chart"]["chart_type"] == "line"
     assert data["code"] and "matplotlib" in data["code"]
     assert data["input_url"] and data["render_url"]
+
+
+def test_single_parse_error_is_200(api):
+    client, server = api
+
+    class BrokenClient:
+        def chat_image(self, prompt, image_bytes, **kw):
+            raise RuntimeError("VL 调用失败: 模型不可用")
+
+    server.client = BrokenClient()
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("RGB", (200, 150), (255, 255, 255)).save(buf, format="PNG")
+    r = client.post("/api/singles/parse", files={"file": ("x.png", buf.getvalue(), "image/png")})
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert data["status"] == "error"
+    assert "VL" in data["error"]
+
+
+def test_upload_keeps_file_name_and_export_name(api):
+    client, _ = api
+    r = client.post("/api/papers", files={"file": ("my paper.pdf", _pdf_bytes(), "application/pdf")},
+                    data={"detect": "false"})
+    assert r.status_code == 200, r.text
+    info = r.json()
+    assert info["file_name"] == "my paper.pdf"
+    h = info["pdf_hash"]
+    client.put(f"/api/papers/{h}/annotations", json={"version": 1, "pages": {"1": {
+        "strokes": [{"id": "s-1", "tool": "pen", "color": "#CC2936", "width": 2.0,
+                     "points": [[0.1, 0.2], [0.3, 0.4]]}]}}})
+    r = client.post(f"/api/papers/{h}/export")
+    assert r.status_code == 200
+    cd = r.headers["content-disposition"]
+    encoded_name = cd.split("filename*=utf-8''", 1)[1]
+    assert unquote(encoded_name) == "annotated-my paper.pdf"
 
 
 def test_health_and_unknown_paper(api):

@@ -39,3 +39,14 @@ def test_dedup_merges_overlap():
     out = dedup_bboxes(items, thr=0.7)
     assert len(out) == 2
     assert out[0].id == "f0"
+
+
+def test_dedup_drops_nested_bbox_and_keeps_reading_order():
+    """内嵌重复框（同图被检测两次）保留大框，输出按阅读顺序。"""
+    items = [
+        _bbox(0, [100, 100, 500, 400]),
+        _bbox(1, [140, 150, 460, 380]),  # 完全内嵌于 f0
+        _bbox(2, [0, 0, 300, 80]),
+    ]
+    out = dedup_bboxes(items)
+    assert [i.id for i in out] == ["f2", "f0"]

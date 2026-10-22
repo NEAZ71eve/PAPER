@@ -17,6 +17,18 @@ CHART = {
 }
 
 
+BAD_COMBO = {
+    "chart_type": "combo", "title": "bad axis",
+    "x_axis": {"label": "x", "unit": None}, "y_axis": {"label": "y", "unit": None},
+    "y_axis_right": {"label": "r", "unit": None},
+    "series": [
+        {"name": "a", "kind": "bar", "axis": "left", "x": [1], "y": [1.0]},
+        {"name": "b", "kind": "line", "axis": "left", "x": [1], "y": [2.0]},
+    ],
+    "heatmap": None,
+}
+
+
 class FakeClient:
     def __init__(self, response=CHART, fail=False):
         self.response = response
@@ -134,6 +146,36 @@ def test_run_single(tmp_path):
     assert "image_hash" in r2
 
 
+def test_run_single_success_clears_stale_error(tmp_path):
+    """同一图片先失败后重试成功：旧 error 不得残留。"""
+    from PIL import Image
+    img = tmp_path / "retry.png"
+    Image.new("RGB", (200, 150), (255, 255, 255)).save(img)
+    cfg = Config.from_env()
+    cfg.cache_dir = str(tmp_path / "cache")
+    r = run_single(cfg, FakeClient(BAD_COMBO), img)
+    assert r["status"] == "error" and "没有分配到右轴" in r["error"]
+    r2 = run_single(cfg, FakeClient(CHART), img)
+    assert r2["status"] == "done"
+    assert "error" not in r2
+
+
+def test_figure_success_clears_stale_error(tmp_path):
+    """图表解析失败后再解析成功：fig.error 必须清空。"""
+    _make_pdf(tmp_path / "fig-retry.pdf")
+    cfg = Config.from_env()
+    cfg.cache_dir = str(tmp_path / "cache")
+    pipe = PaperPipeline(cfg, FakeClient(BAD_COMBO), detector=FakeDetector(), fallback=FakeDetector([]))
+    store = pipe.render_and_detect(tmp_path / "fig-retry.pdf")
+    fid = store.session["figures"][0]["id"]
+    r1 = pipe.parse_figure(store, fid)
+    assert r1["parse_status"] == "error" and r1["error"]
+    pipe2 = PaperPipeline(cfg, FakeClient(CHART), detector=FakeDetector(), fallback=FakeDetector([]))
+    r2 = pipe2.parse_figure(store, fid)
+    assert r2["parse_status"] == "done"
+    assert r2["error"] is None
+
+
 def test_render_only(tmp_path):
     _make_pdf(tmp_path / "ro.pdf")
     cfg = Config.from_env()
@@ -158,6 +200,22 @@ def test_render_and_detect_no_parse(tmp_path):
     assert len(s["figures"]) == 2  # 两页各一张
     assert all(f["parse_status"] == "pending" for f in s["figures"])
     assert client.parse_calls == 0  # 检测阶段不做数据解析
+
+
+def test_pipeline_uses_fallback_when_primary_returns_no_figures(tmp_path):
+    _make_pdf(tmp_path / "empty-primary.pdf")
+    cfg = Config.from_env()
+    cfg.cache_dir = str(tmp_path / "cache")
+    primary = FakeDetector([])
+    fallback = FakeDetector()
+    pipe = PaperPipeline(cfg, FakeClient(), detector=primary, fallback=fallback)
+
+    store = pipe.render_and_detect(tmp_path / "empty-primary.pdf")
+
+    assert primary.detect_calls == 2
+    assert fallback.detect_calls == 2
+    assert len(store.session["figures"]) == 2
+    assert all(f["source"] == "vl_grounding" for f in store.session["figures"])
 
 
 def test_parse_figure_on_demand(tmp_path):
@@ -204,6 +262,21 @@ def test_detect_redetect_clears(tmp_path):
     pipe2.detect(store)  # 换无框检测器重新检测
     assert store.session["stage"] == "ready"
     assert store.session["figures"] == []
+
+
+def test_detect_success_clears_stale_error(tmp_path):
+    """历史检测失败留下的 error 字段，在后续成功检测后必须清除。"""
+    _make_pdf(tmp_path / "clear.pdf")
+    cfg = Config.from_env()
+    cfg.cache_dir = str(tmp_path / "cache")
+    pipe = PaperPipeline(cfg, FakeClient(), detector=FakeDetector(), fallback=FakeDetector([]))
+    store = pipe.render_only(tmp_path / "clear.pdf")
+    store.session["stage"] = "failed"
+    store.session["error"] = "历史错误"
+    store.save()
+    pipe.detect(store)
+    assert store.session["stage"] == "ready"
+    assert "error" not in store.session
 
 
 def test_run_render_failure_sets_failed_stage(tmp_path):

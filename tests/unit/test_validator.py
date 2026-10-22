@@ -75,6 +75,98 @@ def test_valid_heatmap():
     assert out["heatmap"]["matrix"] == [[1.0, 2.0], [3.0, 4.0]]
 
 
+def test_valid_combo_chart_preserves_series_and_secondary_axis():
+    d = {
+        "chart_type": "combo",
+        "title": "connectivity by group",
+        "x_axis": {"label": "group", "unit": None},
+        "y_axis": {"label": "fragments", "unit": None},
+        "y_axis_right": {"label": "edges", "unit": None},
+        "series": [
+            {"name": "fragments", "kind": "bar", "axis": "left", "x": ["g1", "g2"], "y": [12, 49]},
+            {"name": "edges", "kind": "line", "axis": "right", "x": ["g2"], "y": [27]},
+        ],
+    }
+
+    out, warnings = validate_chart(d)
+
+    assert out["chart_type"] == "combo"
+    assert out["series"][0]["kind"] == "bar"
+    assert out["series"][1]["axis"] == "right"
+    assert out["y_axis_right"]["label"] == "edges"
+    assert any("组合图" in warning for warning in warnings)
+    assert any("x 类别不一致" in warning for warning in warnings)
+
+
+def test_combo_inferred_from_mixed_series_even_when_model_says_line():
+    d = {
+        "chart_type": "line",
+        "title": "connectivity by group",
+        "x_axis": {"label": "group", "unit": None},
+        "y_axis": {"label": "fragments", "unit": None},
+        "y_axis_right": {"label": "edges", "unit": None},
+        "series": [
+            {"name": "fragments", "kind": "bar", "axis": "left", "x": ["g1", "g2"], "y": [12, 49]},
+            {"name": "edges", "kind": "line", "axis": "right", "x": ["g1", "g2"], "y": [2, 27]},
+        ],
+    }
+
+    out, warnings = validate_chart(d)
+
+    assert out["chart_type"] == "combo"
+    assert out["series"][1]["axis"] == "right"
+    assert warnings
+
+
+def test_combo_rejects_secondary_axis_without_right_series():
+    d = {
+        "chart_type": "combo",
+        "title": "invalid axis mapping",
+        "x_axis": {"label": "group", "unit": None},
+        "y_axis": {"label": "fragments", "unit": None},
+        "y_axis_right": {"label": "edges", "unit": None},
+        "series": [
+            {"name": "bars", "kind": "bar", "axis": "left", "x": ["g1"], "y": [12]},
+            {"name": "line", "kind": "line", "axis": "left", "x": ["g1"], "y": [2]},
+        ],
+    }
+
+    with pytest.raises(ValidationError, match="没有分配到右轴"):
+        validate_chart(d)
+
+
+def test_combo_single_kind_downgrades_to_that_kind():
+    """模型误判 combo 且只有一种系列/无右轴信号时降级为单类型，不再报错。"""
+    d = {
+        "chart_type": "combo",
+        "title": "bars only",
+        "x_axis": {"label": "group", "unit": None},
+        "y_axis": {"label": "value", "unit": None},
+        "series": [{"name": "bars", "kind": "bar", "x": ["g1", "g2"], "y": [12, 49]}],
+    }
+    out, warns = validate_chart(d)
+    assert out["chart_type"] == "bar"
+    assert "kind" not in out["series"][0]
+    assert any("combo" in w for w in warns)
+
+
+def test_combo_single_kind_with_right_axis_downgrades():
+    """combo 只有一种系列但带右轴信息时同样降级，避免复刻直接失败。"""
+    d = {
+        "chart_type": "combo",
+        "title": "bars with stray right axis",
+        "x_axis": {"label": "group", "unit": None},
+        "y_axis": {"label": "value", "unit": None},
+        "y_axis_right": {"label": "unused", "unit": None},
+        "series": [{"name": "bars", "kind": "bar", "axis": "right", "x": ["g1"], "y": [12]}],
+    }
+    out, warns = validate_chart(d)
+    assert out["chart_type"] == "bar"
+    assert "y_axis_right" not in out
+    assert out["series"][0].get("axis") is None
+    assert any("combo" in w for w in warns)
+
+
 def test_heatmap_ragged_raises():
     d = {
         "chart_type": "heatmap",
