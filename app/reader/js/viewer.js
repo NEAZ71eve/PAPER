@@ -95,8 +95,21 @@ export function applyScale() {
   emit('scale-changed');
 }
 
-export function setZoom(z) { state.zoom = z; state.fitMode = null; applyScale(); }
-export function setFitMode(mode) { state.fitMode = mode; applyScale(); }
+export function setZoom(z) {
+  state.zoom = z;
+  state.fitMode = null;
+  applyScale();
+  // 同步 zoom-select 控件：手动缩放下拉设置的值与 zoom 对齐
+  const zs = document.getElementById('zoom-select');
+  if (zs) zs.value = String(z);
+}
+export function setFitMode(mode) {
+  state.fitMode = mode;
+  applyScale();
+  // 同步 zoom-select 控件：适应模式下清空下拉，避免 UI 与实际状态矛盾
+  const zs = document.getElementById('zoom-select');
+  if (zs) zs.value = '';
+}
 
 export function gotoPage(n) {
   if (!state.paper) return;

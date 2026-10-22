@@ -19,11 +19,10 @@ export function initRibbon() {
   register('undo',        { run: undoInk,                 enabled: () => !!state.paper });
   register('redo',        { run: redoInk,                 enabled: () => !!state.paper });
   register('clear-page',  { run: () => clearPageStrokes(state.page), enabled: () => !!state.paper });
-  register('fit-width',   { run: () => { if (typeof window.__setFitMode === 'function') window.__setFitMode('width'); $('zoom-select').value = ''; }, enabled: () => !!state.paper });
-  register('fit-page',    { run: () => { if (typeof window.__setFitMode === 'function') window.__setFitMode('page');  $('zoom-select').value = ''; }, enabled: () => !!state.paper });
+  // fit-width / fit-page / open-toolbox 改由 shell.js 注册，run/enabled 实现在那里
+  // viewer.js setFitMode 已下沉 zoom-select 同步逻辑，不再需要命令层关心 DOM
   register('export',      { run: onExport,                enabled: () => !!state.paper });
   register('redetect',    { run: redetectFigures,         enabled: () => !!state.paper });
-  register('open-toolbox',{ run: () => emit('switch-side-tab', 'toolbox'), enabled: () => true });
 
   // zoom-select 直接绑定（非 data-cmd，因为是 input 控件值）
   $('zoom-select').addEventListener('change', (e) => {
