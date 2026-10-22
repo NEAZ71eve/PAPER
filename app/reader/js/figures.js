@@ -77,6 +77,7 @@ export async function redetectFigures() {
     renderBoxes();
     startPolling();
   } catch (e) { if (g === gen) toast(`重新检测失败: ${e.message}`); }
+  emit('figures-updated');
 }
 
 async function refreshFigures(h = hash(), g = gen) {
@@ -85,6 +86,7 @@ async function refreshFigures(h = hash(), g = gen) {
     if (g !== gen) return;
     state.figures = data.figures;
     renderBoxes();
+    emit('figures-updated');
   } catch (e) { if (g === gen) toast('图表列表获取失败'); }
 }
 
@@ -131,6 +133,7 @@ async function onBoxClick(fig) {
     if (g !== gen) return;
     fig.parse_status = r.parse_status;
     renderBoxes();
+    emit('figures-updated');
     if (r.parse_status === 'error') {
       showPanelError(panel, r.error || '解析失败', () => onBoxClick(fig));
       return;
@@ -225,6 +228,12 @@ function tablePane(chart) {
   title.className = 'chart-title';
   title.textContent = chart.title || '（无标题）';
   pane.appendChild(title);
+  for (const warning of chart.warnings || []) {
+    const notice = document.createElement('p');
+    notice.className = 'warning-text';
+    notice.textContent = warning;
+    pane.appendChild(notice);
+  }
   if (chart.heatmap && chart.heatmap.matrix) {
     pane.appendChild(heatmapTable(chart.heatmap));
     return pane;
@@ -250,7 +259,10 @@ function seriesTable(series, xLabel) {
   table.className = 'data-table';
   const head = document.createElement('tr');
   head.appendChild(th(xLabel));
-  series.forEach((s) => head.appendChild(th(s.name || 'y')));
+  series.forEach((s) => {
+    const axisLabel = s.axis === 'right' ? '（右轴）' : '';
+    head.appendChild(th(`${s.name || 'y'}${axisLabel}`));
+  });
   table.appendChild(head);
   (series[0].x || []).forEach((x, i) => {
     const tr = document.createElement('tr');

@@ -11,8 +11,6 @@ export function initViewer() {
     if (e.target.files[0]) importFile(e.target.files[0]);
     e.target.value = '';
   });
-  $('btn-prev').addEventListener('click', prevPage);
-  $('btn-next').addEventListener('click', nextPage);
   const reader = $('reader');
   reader.addEventListener('dragover', (e) => { e.preventDefault(); reader.classList.add('drag-over'); });
   reader.addEventListener('dragleave', () => reader.classList.remove('drag-over'));
@@ -53,6 +51,7 @@ export async function importFile(file) {
   await loadAnnotations();
   renderPage();
   emit('paper-loaded');
+  emit('paper-state-changed');
   toast(`已导入 ${info.file_name}（${info.n_pages} 页${info.truncated ? '，超出页数上限已截断' : ''}）`);
 }
 
@@ -70,6 +69,7 @@ export function renderPage() {
     updatePager();
     highlightThumb();
     emit('page-changed', n);
+    emit('paper-state-changed');
   };
   img.onerror = () => {
     if (n !== state.page) return;
@@ -141,3 +141,8 @@ function highlightThumb() {
   const active = document.querySelector('.thumb.active');
   if (active) active.scrollIntoView({ block: 'nearest' });
 }
+
+// ---------- window 桥接（供 shell.js 调用）----------
+window.__gotoPage = gotoPage;
+window.__setZoom = setZoom;
+window.__setFitMode = setFitMode;

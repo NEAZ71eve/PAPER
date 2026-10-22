@@ -16,6 +16,7 @@ export async function loadAnnotations() {
   state.undoStack = [];
   state.redoStack = [];
   emit('annotations-changed');
+  emit('paper-state-changed');
 }
 
 export function scheduleSave() {

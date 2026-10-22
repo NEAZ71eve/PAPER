@@ -27,6 +27,7 @@ function onPlace(e) {
   const c = { id: uid('c'), x, y, text: '', resolved: false, created_at: now, updated_at: now };
   pageAnnot(state.page).comments.push(c);
   scheduleSave();
+  emit('paper-state-changed');
   renderAll();
   emit('switch-side-tab', 'comments');
   requestAnimationFrame(() => {
@@ -87,6 +88,7 @@ function renderCards() {
         c.text = ta.value;
         c.updated_at = new Date().toISOString();
         scheduleSave();  // 不触发重渲染，避免打断输入
+        emit('paper-state-changed');
       });
       card.appendChild(ta);
     }
@@ -101,6 +103,7 @@ function renderCards() {
       c.resolved = !c.resolved;
       c.updated_at = new Date().toISOString();
       scheduleSave();
+      emit('paper-state-changed');
       renderAll();
     });
     const del = document.createElement('button');
@@ -111,6 +114,7 @@ function renderCards() {
       entry.comments = entry.comments.filter((x) => x.id !== c.id);
       prunePage(state.page);
       scheduleSave();
+      emit('paper-state-changed');
       renderAll();
     });
     row.appendChild(locate);
