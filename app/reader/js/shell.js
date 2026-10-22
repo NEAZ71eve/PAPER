@@ -171,17 +171,6 @@ export function initShell() {
   setThumbsVisible(loadPref(LS.THUMBS_VISIBLE, true));
   setSidebarVisible(loadPref(LS.SIDEBAR_VISIBLE, true));
 
-  // 绑定现有按钮（带 id 的那些）到命令（覆盖 ribbon.js 原有监听）
-  const bindCmd = (id, name) => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener('click', () => run(name));
-  };
-  bindCmd('btn-export', 'export');
-  bindCmd('btn-redetect', 'redetect');
-  bindCmd('btn-clear-page', 'clear-page');
-  bindCmd('btn-prev', 'prev');
-  bindCmd('btn-next', 'next');
-
   updateStatus();
   refreshStates();
 }
