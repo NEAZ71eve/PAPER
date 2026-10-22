@@ -24,6 +24,7 @@ from chart_sdk.pipeline.single import run_single
 
 APP_DIR = Path(__file__).resolve().parent
 READER_DIR = APP_DIR / "reader"
+SAMPLE_DIR = APP_DIR.parent / "assets" / "samples"
 
 config = Config.from_env()
 client = VLClient(config)
@@ -94,7 +95,13 @@ def paper_status(h: str):
     store = _open_store(h)
     s = store.session
     prog = _detect_progress.get(h, {"done": 0, "total": s.get("n_pages", 0)})
-    stage = "detecting" if h in _detect_running else s.get("stage")
+    with _detect_lock:
+        is_running = h in _detect_running
+    if s.get("stage") == "detecting" and not is_running:
+        s["stage"] = "failed"
+        s["error"] = "检测任务已中断（服务可能重启），请点击「重新检测」。"
+        store.save()
+    stage = "detecting" if is_running else s.get("stage")
     return {"stage": stage, "detect_done": prog["done"], "detect_total": prog["total"],
             "n_figures": len(s.get("figures", [])), "n_pages": s.get("n_pages", 0),
             "file_name": s.get("file_name"), "error": s.get("error")}
@@ -193,6 +200,7 @@ READER_DIR.mkdir(parents=True, exist_ok=True)
 mimetypes.add_type("text/javascript", ".js", strict=True)
 mimetypes.add_type("text/css", ".css", strict=True)
 app.mount("/cache", StaticFiles(directory=config.cache_dir), name="cache")
+app.mount("/samples", StaticFiles(directory=SAMPLE_DIR), name="samples")
 app.mount("/", StaticFiles(directory=READER_DIR, html=True), name="reader")
 
 if __name__ == "__main__":

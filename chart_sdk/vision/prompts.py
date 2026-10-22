@@ -1,6 +1,7 @@
 DETECT_PROMPT = """You are a figure detector for academic paper pages.
-Find all data charts in the input image, even when a chart is small or surrounded by dense text: line charts, bar charts, combo charts (such as bars plus a line), and heatmaps.
+Find all scientific data visualizations in the input image, even when a chart is small or surrounded by dense text: line charts, bar charts, combo charts (such as bars plus a line), heatmaps, scatter plots, and 3D plots showing data points, spatial distributions, or trajectories.
 Do NOT include: photos, diagrams, flowcharts, pie charts, logos, tables, equations.
+For a 3D plot or scatter plot, use type "line" so it can be selected and inspected with the supported chart tools.
 For each chart output one object:
 {"bbox_2d": [x0, y0, x1, y1], "type": "line" | "bar" | "combo" | "heatmap", "caption": "figure caption text or empty"}
 bbox_2d are integers in 0-1000 normalized coordinates of the input image, order [left, top, right, bottom]. Include the full plotting area, not its surrounding paragraph or caption.
@@ -9,6 +10,7 @@ Output ONLY a JSON array. If none found output [].
 
 CLASSIFY_PROMPT = """Classify this image cropped from a paper page.
 Answer ONLY a JSON object: {"type": "line" | "bar" | "combo" | "heatmap" | "other"}
+Treat scatter plots and 3D scientific plots showing data points, spatial distributions, or trajectories as "line".
 Use "other" for photos, diagrams, flowcharts, pie charts, logos, equations, tables, screenshots.
 """
 

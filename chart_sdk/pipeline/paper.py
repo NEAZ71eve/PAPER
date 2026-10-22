@@ -147,6 +147,9 @@ class PaperPipeline:
                 if not figs:
                     figs = self.fallback.detect_page(page_png, doc[p["page"] - 1], p["page"])
                 figures.extend({**asdict(f), "parse_status": "pending", "render_status": "pending"} for f in figs)
+                s["figures"] = figures
+                store.save()
+                cb("detecting", i + 1, len(pages), f"检测第 {p['page']} 页完成")
         s["figures"] = figures
         store.save()
 

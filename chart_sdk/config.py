@@ -18,7 +18,7 @@ class Config:
     def from_env(cls) -> "Config":
         return cls(
             base_url=os.getenv("CHART_SDK_BASE_URL", "http://localhost:11434/v1"),
-            model=os.getenv("CHART_SDK_MODEL", "qwen2.5vl:7b"),
+            model=os.getenv("CHART_SDK_MODEL", "qwen2.5vl:3b"),
             dpi=int(os.getenv("CHART_SDK_DPI", "150")),
             max_pages=int(os.getenv("CHART_SDK_MAX_PAGES", "30")),
             exec_timeout=float(os.getenv("CHART_SDK_EXEC_TIMEOUT", "30")),

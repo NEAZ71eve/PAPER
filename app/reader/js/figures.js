@@ -52,9 +52,12 @@ function startPolling() {
         stopPolling();
         await refreshFigures(h, g);
         if (st.stage === 'ready') toast(`检测完成，标记 ${st.n_figures} 张图表`);
-      } else if (Date.now() - pollStart > MAX_POLL_MS) {
-        stopPolling();
-        $('detect-status').textContent = '检测超时，可点「重新检测」';
+      } else {
+        if (st.n_figures !== state.figures.length) await refreshFigures(h, g);
+        if (Date.now() - pollStart > MAX_POLL_MS) {
+          stopPolling();
+          $('detect-status').textContent = '检测超时，可点「重新检测」';
+        }
       }
     } catch (e) {
       if (g !== gen) return;

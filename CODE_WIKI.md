@@ -124,14 +124,14 @@ flowchart LR
 
 - `FigureBBox`：检测结果数据类，含 `id/page/bbox_norm/bbox_px/type/source/caption_hint`；类型包括 line/bar/combo/heatmap。
 - `FigureDetector.detect_page()`：检测器接口。
-- `VLGroundingDetector.detect_page()`：整页 VL grounding；整页空结果时扫描 70% 重叠分区，并把局部 bbox 映射回页面后去重。
-- `BitmapFallbackDetector.detect_page()`：提取 PDF 嵌入图片；无位图候选时从大型矢量绘图框生成候选，对裁剪区域分类。
+- `VLGroundingDetector.detect_page()`：整页 VL grounding；去重后不足两张时扫描 70% 重叠分区，并把局部 bbox 映射回页面后去重。
+- `BitmapFallbackDetector.detect_page()`：提取 PDF 嵌入图片，并从大型矢量绘图框生成非重复候选，对裁剪区域分类。
 
 **[chart_sdk/pdf/geom.py](chart_sdk/pdf/geom.py)**：`norm_to_px()` 和 `px_to_norm()` 转换坐标；`clamp_bbox()` 限制边界并过滤过小框；`iou()` 计算交并比；`dedup_bboxes()` 过滤重叠框。
 
 ### 6.4 图表视觉解析
 
-**[chart_sdk/vision/prompts.py](chart_sdk/vision/prompts.py)** 定义整页/分区检测、裁剪图分类和单图结构化解析提示词；支持 `line`、`bar`、`combo`、`heatmap`。组合图系列分别声明绘制类型及左/右轴。
+**[chart_sdk/vision/prompts.py](chart_sdk/vision/prompts.py)** 定义整页/分区检测、裁剪图分类和单图结构化解析提示词；检测覆盖 `line`、`bar`、`combo`、`heatmap`，并将三维科学轨迹/散点图作为 line 候选框选。当前结构化数据与复刻格式仍是二维图表。组合图系列分别声明绘制类型及左/右轴。
 
 **[chart_sdk/vision/json_utils.py](chart_sdk/vision/json_utils.py)**：`extract_json(text)` 从模型输出（含可能的 Markdown 代码围栏）中提取首个 JSON 对象或数组。
 
@@ -160,7 +160,7 @@ flowchart LR
 - `detect()`：清空旧图框后重新检测，维护会话阶段。
 - `parse_figure()`：按需解析指定图表；已完成时读取缓存；不存在时抛 `KeyError`。
 - `run()`：供旧版 Gradio 使用的完整批处理入口，执行渲染、检测和全部图表解析。
-- `_detect_figures()`：逐页检测；单页主检测器异常时尝试 fallback。
+- `_detect_figures()`：逐页检测并及时持久化已完成页面的图框；单页主检测器异常时尝试 fallback。
 - `_process_figure()`：裁剪、解析、落盘 chart JSON 和代码，并执行绘图；单图失败写入图表状态，不阻塞其他图表。
 
 **[chart_sdk/pipeline/single.py](chart_sdk/pipeline/single.py)**：`run_single()` 编排单图片缓存、VL 解析、代码生成和渲染，并更新单图记录状态。
@@ -263,15 +263,13 @@ data/cache/
 | 环境变量 | 默认值 | 含义 |
 |---|---|---|
 | `CHART_SDK_BASE_URL` | `http://localhost:11434/v1` | Ollama OpenAI 兼容端点 |
-| `CHART_SDK_MODEL` | `qwen2.5vl:7b` | 模型名 |
+| `CHART_SDK_MODEL` | `qwen2.5vl:3b` | 模型名 |
 | `CHART_SDK_DPI` | `150` | PDF 页面渲染 DPI |
 | `CHART_SDK_MAX_PAGES` | `30` | 最大处理页数 |
 | `CHART_SDK_EXEC_TIMEOUT` | `30` | 生成绘图脚本执行超时（秒） |
 | `CHART_SDK_VL_TIMEOUT` | `120` | 模型请求超时（秒） |
 | `CHART_SDK_CACHE_DIR` | `data/cache` | 缓存根目录 |
 | `CHART_SDK_API_PORT` | `8000` | `python -m app.server` 启动时使用的端口 |
-
-注意：配置默认模型是 `qwen2.5vl:7b`；README 快速启动示例显式设置为 `qwen2.5vl:3b`。两者不是同一个默认值，运行时以环境变量为准。
 
 ## 10. 运行方式（Windows PowerShell）
 

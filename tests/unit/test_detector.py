@@ -6,6 +6,7 @@ from PIL import Image
 
 from chart_sdk.config import Config
 from chart_sdk.pdf.detector import BitmapFallbackDetector, VLGroundingDetector
+from chart_sdk.vision.prompts import CLASSIFY_PROMPT, DETECT_PROMPT
 
 
 class FakeClient:
@@ -27,9 +28,11 @@ def _make_pdf_with_image(path: Path, dpi_src_png: Path):
     doc.close()
 
 
-def _make_pdf_with_vector_chart(path: Path):
+def _make_pdf_with_vector_chart(path: Path, image_path: Path | None = None):
     doc = fitz.open()
     page = doc.new_page(width=595, height=842)
+    if image_path:
+        page.insert_image(fitz.Rect(20, 20, 80, 80), filename=str(image_path))
     page.draw_rect(fitz.Rect(100, 150, 480, 400), color=(0, 0, 0))
     page.draw_rect(fitz.Rect(120, 170, 460, 380), color=(0, 0, 0))
     for y in (190, 240, 290, 340, 390):
@@ -118,6 +121,36 @@ def test_vl_grounding_retries_empty_page_as_overlapping_tiles(tmp_path):
     assert figures[0].bbox_norm == [300, 445, 700, 836]
 
 
+def test_vl_grounding_refines_single_detection_with_overlapping_tiles(tmp_path):
+    page_png = tmp_path / "page.png"
+    Image.new("RGB", (1000, 1000), "white").save(page_png)
+    first_chart = {"bbox_2d": [100, 100, 250, 250], "type": "line", "caption": "first"}
+    first_chart_in_tile = {"bbox_2d": [143, 143, 357, 357], "type": "line", "caption": "first"}
+    missed_chart_in_tile = {"bbox_2d": [571, 143, 857, 357], "type": "bar", "caption": "second"}
+    client = FakeClient([
+        json.dumps([first_chart, first_chart]),
+        json.dumps([first_chart_in_tile]),
+        json.dumps([missed_chart_in_tile]),
+        "[]",
+        "[]",
+    ])
+    detector = VLGroundingDetector(Config.from_env(), client)
+
+    figures = detector.detect_page(page_png, None, 2)
+
+    assert client.calls == 5
+    assert len(figures) == 2
+    assert [figure.type for figure in figures] == ["line", "bar"]
+    assert figures[0].bbox_px == [100, 100, 250, 250]
+    assert figures[1].bbox_px == [700, 100, 900, 250]
+
+
+def test_detection_prompts_include_3d_scientific_plots():
+    assert "3D plots" in DETECT_PROMPT
+    assert 'use type "line"' in DETECT_PROMPT
+    assert "3D scientific plots" in CLASSIFY_PROMPT
+
+
 def test_bitmap_fallback_detects_embedded(tmp_path):
     src = tmp_path / "chart.png"
     Image.new("RGB", (300, 200), (30, 120, 220)).save(src)
@@ -162,3 +195,49 @@ def test_vector_fallback_detects_chart_without_embedded_images(tmp_path):
     assert detector.client.calls == 1
     assert figures[0].type == "combo"
     assert figures[0].source == "vector_fallback"
+
+
+def test_vector_fallback_checks_vector_chart_when_page_has_embedded_image(tmp_path):
+    photo = tmp_path / "photo.png"
+    Image.new("RGB", (60, 60), (10, 10, 10)).save(photo)
+    pdf = tmp_path / "mixed.pdf"
+    _make_pdf_with_vector_chart(pdf, image_path=photo)
+    _render(pdf, tmp_path / "mixed-pages")
+    page_png = tmp_path / "mixed-pages" / "page-01.png"
+    with fitz.open(pdf) as doc:
+        client = FakeClient([
+            json.dumps({"type": "other"}),
+            json.dumps({"type": "combo"}),
+        ])
+        detector = BitmapFallbackDetector(Config.from_env(), client)
+        figures = detector.detect_page(page_png, doc[0], 1)
+
+    assert client.calls == 2
+    assert len(figures) == 1
+    assert figures[0].type == "combo"
+    assert figures[0].source == "vector_fallback"
+
+
+def test_synthetic_sample_chart_candidate_benchmark(tmp_path):
+    sample = Path(__file__).resolve().parents[2] / "assets" / "samples" / "synthetic-demo.pdf"
+    config = Config.from_env()
+    pages = _render(sample, tmp_path / "sample-pages", dpi=config.dpi)
+    client = FakeClient([
+        json.dumps({"type": chart_type}) for chart_type in ("line", "bar", "heatmap")
+    ])
+    detector = BitmapFallbackDetector(config, client)
+
+    figures = []
+    with fitz.open(sample) as doc:
+        for page_info in pages:
+            page_no = page_info["page"]
+            figures.extend(detector.detect_page(
+                tmp_path / "sample-pages" / f"page-{page_no:02}.png",
+                doc[page_no - 1],
+                page_no,
+            ))
+
+    assert len(figures) == 3
+    assert [figure.type for figure in figures] == ["line", "bar", "heatmap"]
+    assert all(figure.source == "bitmap_fallback" for figure in figures)
+    assert client.calls == 3

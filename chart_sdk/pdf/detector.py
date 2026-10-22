@@ -33,7 +33,7 @@ class FigureDetector:
 
 
 class VLGroundingDetector(FigureDetector):
-    """整页优先检测；空结果时用重叠分区提高小图表召回。"""
+    """整页优先检测；结果不足两张时用重叠分区补漏。"""
 
     def __init__(self, config: Config, client: VLClient):
         self.config = config
@@ -46,8 +46,9 @@ class VLGroundingDetector(FigureDetector):
                 self.client.chat_image(DETECT_PROMPT, page_png.read_bytes()),
                 page_no, (w, h), (0, 0), (w, h),
             )
-            if items:
-                return self._finalize(items, page_no, (w, h))
+            items = self._finalize(items, page_no, (w, h))
+            if len(items) >= 2:
+                return items
 
             boxes = self._overlapping_tiles(w, h)
             for x0, y0, x1, y1 in boxes:
@@ -147,27 +148,29 @@ class BitmapFallbackDetector(FigureDetector):
                     continue
                 candidate_boxes.append((px, "bitmap_fallback"))
 
-        if not candidate_boxes:
-            page_area = page.rect.width * page.rect.height
-            vector_boxes = []
-            for drawing in page.get_drawings():
-                rect = drawing["rect"]
-                area = rect.width * rect.height
-                aspect = rect.width / rect.height if rect.height else 0
-                if not (0.05 <= area / page_area <= 0.65 and 0.4 <= aspect <= 3.0):
-                    continue
-                px = clamp_bbox(
-                    [rect.x0 * ratio, rect.y0 * ratio, rect.x1 * ratio, rect.y1 * ratio],
-                    w, h,
-                )
-                if px is not None:
-                    vector_boxes.append(px)
-            vector_boxes.sort(key=lambda box: (box[2] - box[0]) * (box[3] - box[1]), reverse=True)
-            accepted_vectors = []
-            for px in vector_boxes:
-                if all(not _duplicate_bbox(px, kept) for kept in accepted_vectors):
-                    accepted_vectors.append(px)
-                    candidate_boxes.append((px, "vector_fallback"))
+        page_area = page.rect.width * page.rect.height
+        vector_boxes = []
+        for drawing in page.get_drawings():
+            rect = drawing["rect"]
+            area = rect.width * rect.height
+            aspect = rect.width / rect.height if rect.height else 0
+            if not (0.05 <= area / page_area <= 0.65 and 0.4 <= aspect <= 3.0):
+                continue
+            px = clamp_bbox(
+                [rect.x0 * ratio, rect.y0 * ratio, rect.x1 * ratio, rect.y1 * ratio],
+                w, h,
+            )
+            if px is not None:
+                vector_boxes.append(px)
+        vector_boxes.sort(key=lambda box: (box[2] - box[0]) * (box[3] - box[1]), reverse=True)
+        accepted_vectors = []
+        for px in vector_boxes:
+            if (
+                all(not _duplicate_bbox(px, kept) for kept in accepted_vectors)
+                and all(not _duplicate_bbox(px, candidate) for candidate, _ in candidate_boxes)
+            ):
+                accepted_vectors.append(px)
+                candidate_boxes.append((px, "vector_fallback"))
 
         for i, (px, source) in enumerate(candidate_boxes, 1):
             crop = page_png.parent / f"_cls_{page_no}_{i}.png"

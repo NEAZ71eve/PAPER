@@ -117,6 +117,45 @@ def test_status_reports_detecting_while_running(api):
     assert st["stage"] == "ready"
 
 
+def test_detected_figures_are_visible_before_all_pages_finish(api):
+    client, server = api
+    page_two_started = threading.Event()
+    continue_detection = threading.Event()
+
+    class BlockingSecondPageDetector:
+        def detect_page(self, page_png, page, page_no):
+            if page_no == 2:
+                page_two_started.set()
+                assert continue_detection.wait(5)
+            return FakeDetector().detect_page(page_png, page, page_no)
+
+    server.pipeline.detector = BlockingSecondPageDetector()
+    h = _upload(client)["pdf_hash"]
+    assert page_two_started.wait(5)
+
+    status = client.get(f"/api/papers/{h}/status").json()
+    figures = client.get(f"/api/papers/{h}/figures").json()["figures"]
+    assert status["stage"] == "detecting"
+    assert status["n_figures"] == 1
+    assert [figure["page"] for figure in figures] == [1]
+
+    continue_detection.set()
+    assert _wait_ready(client, h)["stage"] == "ready"
+
+
+def test_orphaned_detection_is_reported_as_interrupted(api):
+    client, server = api
+    h = _upload(client, detect="false")["pdf_hash"]
+    store = server.PaperStore.open(server.config.cache_dir, h)
+    store.session["stage"] = "detecting"
+    store.save()
+
+    status = client.get(f"/api/papers/{h}/status").json()
+
+    assert status["stage"] == "failed"
+    assert "已中断" in status["error"]
+
+
 def test_parse_endpoint_offline_full_chain(api):
     client, _ = api
     h = _upload(client)["pdf_hash"]

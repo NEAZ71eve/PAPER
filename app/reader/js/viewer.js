@@ -45,6 +45,7 @@ export async function importFile(file) {
   state.zoom = 1;
   state.fitMode = 'width';
   state.figures = [];
+  $('tb-filename').textContent = info.file_name || '未命名论文';
   buildThumbs(info.n_pages);
   $('empty-state').hidden = true;
   $('page-wrap').hidden = false;

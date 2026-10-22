@@ -1,7 +1,7 @@
-import { on } from './state.js';
+import { on, toast } from './state.js';
 import { refreshStates, onStateChange } from './commands.js';
 import { initShell } from './shell.js';
-import { initViewer } from './viewer.js';
+import { importFile, initViewer } from './viewer.js';
 import { initFigures } from './figures.js';
 import { initInk } from './ink.js';
 import { initComments } from './comments.js';
@@ -25,4 +25,19 @@ window.addEventListener('DOMContentLoaded', () => {
   refreshStates();
   initToolbox();
   refreshStates();
+  const url = new URL(location.href);
+  if (url.searchParams.get('demo') === 'synthetic') {
+    url.searchParams.delete('demo');
+    history.replaceState(null, '', url);
+    fetch('/samples/synthetic-demo.pdf')
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.blob();
+      })
+      .then((blob) => importFile(new File([blob], 'synthetic-demo.pdf', { type: 'application/pdf' })))
+      .catch((error) => {
+        console.error('无法加载合成测试论文', error);
+        toast(`无法加载合成测试论文: ${error.message}`);
+      });
+  }
 });
