@@ -1,4 +1,5 @@
 import { on } from './state.js';
+import { refreshStates, onStateChange } from './commands.js';
 import { initViewer } from './viewer.js';
 import { initFigures } from './figures.js';
 import { initInk } from './ink.js';
@@ -19,5 +20,7 @@ window.addEventListener('DOMContentLoaded', () => {
   initInk();
   initComments();
   initRibbon();
+  refreshStates();
   initToolbox();
+  refreshStates();
 });
