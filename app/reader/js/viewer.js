@@ -66,7 +66,6 @@ export function renderPage() {
     loadedPage = n;
     state.pageSize = { w: img.naturalWidth, h: img.naturalHeight };
     applyScale();
-    updatePager();
     highlightThumb();
     emit('page-changed', n);
     emit('paper-state-changed');
@@ -121,12 +120,6 @@ export function gotoPage(n) {
 
 export function prevPage() { gotoPage(state.page - 1); }
 export function nextPage() { gotoPage(state.page + 1); }
-
-function updatePager() {
-  $('page-indicator').textContent = `${state.page} / ${state.paper.n_pages}`;
-  $('btn-prev').disabled = state.page <= 1;
-  $('btn-next').disabled = state.page >= state.paper.n_pages;
-}
 
 function buildThumbs(n) {
   const box = $('thumbs');
