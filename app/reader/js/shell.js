@@ -19,7 +19,7 @@ function loadPref(key, def) {
 function savePref(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch {} }
 
 // ---------- 页签 & Backstage ----------
-function switchTab(name) {
+export function switchTab(name) {
   if (name === 'file') { openBackstage(); return; }
   document.querySelectorAll('.ribbon-tab').forEach((t) =>
     t.classList.toggle('active', t.dataset.tab === name));
@@ -47,7 +47,7 @@ function initBackstage() {
 }
 
 // ---------- 折叠 ----------
-function toggleCollapse() {
+export function toggleCollapse() {
   const r = document.getElementById('ribbon');
   r.classList.toggle('collapsed');
   savePref(LS.RIBBON_COLLAPSED, r.classList.contains('collapsed'));
@@ -63,19 +63,19 @@ function doubleClickCollapse() {
 }
 
 // ---------- 窗格 ----------
-function setThumbsVisible(show) {
+export function setThumbsVisible(show) {
   const el = document.getElementById('thumbs');
   el.classList.toggle('hidden', !show);
   savePref(LS.THUMBS_VISIBLE, show);
 }
-function setSidebarVisible(show) {
+export function setSidebarVisible(show) {
   const el = document.getElementById('sidebar');
   el.classList.toggle('hidden', !show);
   savePref(LS.SIDEBAR_VISIBLE, show);
 }
 
 // ---------- 状态栏 ----------
-function updateStatus() {
+export function updateStatus() {
   const sbPage = document.getElementById('page-indicator');
   const sbFig = document.getElementById('sb-figures');
   const sbCm = document.getElementById('sb-comments');
