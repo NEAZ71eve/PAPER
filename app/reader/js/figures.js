@@ -14,6 +14,8 @@ export function initFigures() {
   on('paper-loaded', onPaperLoaded);
   on('page-changed', renderBoxes);
   on('scale-changed', renderBoxes);
+  on('figures-updated', updateFigureList);
+  on('paper-loaded', updateFigureList);
 }
 
 const hash = () => state.paper.pdf_hash;
@@ -96,6 +98,26 @@ function updateDetectStatus(st) {
   else if (st.stage === 'failed') el.textContent = `检测失败: ${st.error || ''}`;
   else if (st.n_figures > 0) el.textContent = `已标记 ${st.n_figures} 张图表`;
   else el.textContent = '未检测到图表';
+}
+
+// 图表清单（「图表」页签「导航」组）：按页分组列出，点击跳页并切到图表右栏
+function updateFigureList() {
+  const list = $('figure-list');
+  if (!list) return;
+  const figs = state.figures;
+  if (!figs.length) { list.hidden = true; list.innerHTML = ''; return; }
+  list.hidden = false;
+  const pages = [...new Set(figs.map((f) => f.page))].sort((a, b) => a - b);
+  list.innerHTML = pages.map((p) => {
+    const arr = figs.filter((f) => f.page === p);
+    return `<li data-page="${p}">第 ${p} 页: ${arr.map((f) => `${f.id}(${f.type})`).join(', ')}</li>`;
+  }).join('');
+  list.querySelectorAll('li').forEach((li) => {
+    li.addEventListener('click', () => {
+      if (typeof window.__gotoPage === 'function') window.__gotoPage(Number(li.dataset.page));
+      emit('switch-side-tab', 'figure');
+    });
+  });
 }
 
 export function renderBoxes() {

@@ -224,6 +224,11 @@ button:disabled { opacity: .45; cursor: default; }
 #page-stage[data-mode="comment"] #comment-catcher { display: block; }
 #pager { display: flex; align-items: center; gap: 12px; padding: 12px; }
 
+/* ---- 图表清单（「图表」页签「导航」组） ---- */
+.figure-list { list-style: none; margin: 0; padding: 0; width: 100%; max-height: 160px; overflow-y: auto; }
+.figure-list li { cursor: pointer; padding: 4px 6px; font-size: 12px; border-radius: 3px; }
+.figure-list li:hover { background: var(--w-hover); color: var(--w-accent-strong); }
+
 /* ---- 图表高亮框：未解析虚线 / 已解析实线 / 失败红框（设计文档 4.2） ---- */
 .fig-box { position: absolute; border: 2px dashed var(--w-accent); background: rgba(91,91,91,.06); cursor: pointer; }
 .fig-box:hover { background: rgba(91,91,91,.12); }
