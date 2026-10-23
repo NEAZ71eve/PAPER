@@ -102,47 +102,42 @@ def test_vl_grounding_filters_other_and_dedups(tmp_path):
     assert figs[0].id == "p1-f1"
 
 
-def test_vl_grounding_retries_empty_page_as_overlapping_tiles(tmp_path):
+def test_vl_grounding_retries_empty_page_with_one_center_tile(tmp_path):
     page_png = tmp_path / "page.png"
     Image.new("RGB", (1000, 1000), "white").save(page_png)
-    chart_left = {"bbox_2d": [429, 207, 1000, 766], "type": "line", "caption": "chart"}
-    chart_right = {"bbox_2d": [0, 207, 571, 766], "type": "line", "caption": "chart"}
+    chart = {"bbox_2d": [125, 125, 875, 875], "type": "line", "caption": "chart"}
     client = FakeClient([
-        "[]", "[]", "[]", json.dumps([chart_left]), json.dumps([chart_right]),
+        "[]", json.dumps([chart]),
     ])
     detector = VLGroundingDetector(Config.from_env(), client)
 
     figures = detector.detect_page(page_png, None, 4)
 
-    assert client.calls == 5
+    assert client.calls == 2
     assert len(figures) == 1
     assert figures[0].id == "p4-f1"
-    assert figures[0].bbox_px == [300, 445, 700, 836]
-    assert figures[0].bbox_norm == [300, 445, 700, 836]
+    assert figures[0].bbox_px == [200, 200, 800, 800]
+    assert figures[0].bbox_norm == [200, 200, 800, 800]
 
 
-def test_vl_grounding_refines_single_detection_with_overlapping_tiles(tmp_path):
+def test_vl_grounding_refines_single_detection_with_one_center_tile(tmp_path):
     page_png = tmp_path / "page.png"
     Image.new("RGB", (1000, 1000), "white").save(page_png)
     first_chart = {"bbox_2d": [100, 100, 250, 250], "type": "line", "caption": "first"}
-    first_chart_in_tile = {"bbox_2d": [143, 143, 357, 357], "type": "line", "caption": "first"}
-    missed_chart_in_tile = {"bbox_2d": [571, 143, 857, 357], "type": "bar", "caption": "second"}
+    missed_chart_in_tile = {"bbox_2d": [500, 100, 700, 300], "type": "bar", "caption": "second"}
     client = FakeClient([
-        json.dumps([first_chart, first_chart]),
-        json.dumps([first_chart_in_tile]),
+        json.dumps([first_chart]),
         json.dumps([missed_chart_in_tile]),
-        "[]",
-        "[]",
     ])
     detector = VLGroundingDetector(Config.from_env(), client)
 
     figures = detector.detect_page(page_png, None, 2)
 
-    assert client.calls == 5
+    assert client.calls == 2
     assert len(figures) == 2
     assert [figure.type for figure in figures] == ["line", "bar"]
     assert figures[0].bbox_px == [100, 100, 250, 250]
-    assert figures[1].bbox_px == [700, 100, 900, 250]
+    assert figures[1].bbox_px == [500, 180, 660, 340]
 
 
 def test_detection_prompts_include_3d_scientific_plots():

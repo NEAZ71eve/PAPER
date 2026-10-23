@@ -73,7 +73,7 @@ flowchart LR
 1. 前端 `viewer.importFile()` 将 PDF 和 `detect` 开关发送至 `POST /api/papers`。
 2. `PaperStore` 对 PDF 字节计算 SHA-256，并创建/复用 `data/cache/papers/<hash>/` 会话目录。
 3. `PaperPipeline.render_only()` 同步渲染最多 `CHART_SDK_MAX_PAGES` 页，用户可以尽快开始阅读。
-4. 若启用检测，服务通过后台线程调用 `PaperPipeline.detect()`：逐页先用 `VLGroundingDetector` 整页定位；空结果时对重叠分区补扫；仍为空或抛异常时回退到嵌入位图/大型矢量绘图候选，再由 VL 分类过滤。
+4. 若启用检测，服务通过后台线程调用 `PaperPipeline.detect()`：逐页先用 `VLGroundingDetector` 整页定位；结果少于两张时最多对中心区域补扫一次；仍为空或抛异常时回退到嵌入位图/大型矢量绘图候选，再由 VL 分类过滤。
 5. 前端 `figures.js` 轮询状态并显示图框。用户点击某图后请求 `parse_figure()`；成功结果写入缓存，重复点击直接读缓存，不重复推理。
 6. `vision.parser.parse_chart()` 提取结构化图表数据，`validator.validate_chart()` 清理和校验；`generator.generate_code()` 生成 Matplotlib 脚本，`executor.execute_code()` 在临时目录子进程内执行并产出复刻 PNG。
 
@@ -124,7 +124,7 @@ flowchart LR
 
 - `FigureBBox`：检测结果数据类，含 `id/page/bbox_norm/bbox_px/type/source/caption_hint`；类型包括 line/bar/combo/heatmap。
 - `FigureDetector.detect_page()`：检测器接口。
-- `VLGroundingDetector.detect_page()`：整页 VL grounding；去重后不足两张时扫描 70% 重叠分区，并把局部 bbox 映射回页面后去重。
+- `VLGroundingDetector.detect_page()`：整页 VL grounding；去重后不足两张时最多补检一次页面中心区域，并把局部 bbox 映射回页面后去重。
 - `BitmapFallbackDetector.detect_page()`：提取 PDF 嵌入图片，并从大型矢量绘图框生成非重复候选，对裁剪区域分类。
 
 **[chart_sdk/pdf/geom.py](chart_sdk/pdf/geom.py)**：`norm_to_px()` 和 `px_to_norm()` 转换坐标；`clamp_bbox()` 限制边界并过滤过小框；`iou()` 计算交并比；`dedup_bboxes()` 过滤重叠框。
@@ -318,7 +318,7 @@ legacy Gradio UI：
 
 - 目标图表类型为折线图、柱状图、柱线组合图和热力图；不解析正文，饼图/流程图/照片等不在支持范围。
 - 默认最多渲染 30 页，可通过环境变量调整；图表数据由像素估计，可能有数值偏差。
-- 量化模型在复杂双栏论文中的 grounding bbox 仍可能漏检或偏移；全页空结果会触发重叠分区补扫，位图 fallback 只覆盖 PDF 内嵌图片，不能替代通用检测器。
+- 量化模型在复杂双栏论文中的 grounding bbox 仍可能漏检或偏移；快速检测模式仅补扫一次中心区域，可能漏掉边缘的小图，位图 fallback 只覆盖 PDF 内嵌图片，不能替代通用检测器。
 - 组合图和像素估值仍有模型误差；组合图结果会携带人工核验 warning，使用前应核对原图中的系列类型、左右轴和数据点。
 - detector 遇到损坏 JSON 时可能返回空图框而不是启动降级；空行热力图矩阵可能通过结构校验但在绘图时失败。
 - `session.json` 有会话锁与原子写入；状态和前端单例主要按单用户本地使用设计，不承诺多进程并发写入安全。

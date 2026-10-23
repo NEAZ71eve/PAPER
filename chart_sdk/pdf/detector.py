@@ -33,7 +33,7 @@ class FigureDetector:
 
 
 class VLGroundingDetector(FigureDetector):
-    """整页优先检测；结果不足两张时用重叠分区补漏。"""
+    """整页优先检测；结果不足两张时用一次中心区域补检。"""
 
     def __init__(self, config: Config, client: VLClient):
         self.config = config
@@ -43,35 +43,30 @@ class VLGroundingDetector(FigureDetector):
         with Image.open(page_png) as im:
             w, h = im.size
             items = self._parse_response(
-                self.client.chat_image(DETECT_PROMPT, page_png.read_bytes()),
+                self.client.chat_image(DETECT_PROMPT, page_png.read_bytes(), max_tokens=512),
                 page_no, (w, h), (0, 0), (w, h),
             )
             items = self._finalize(items, page_no, (w, h))
             if len(items) >= 2:
                 return items
 
-            boxes = self._overlapping_tiles(w, h)
-            for x0, y0, x1, y1 in boxes:
-                buffer = io.BytesIO()
-                im.crop((x0, y0, x1, y1)).save(buffer, format="PNG")
-                tile_size = (x1 - x0, y1 - y0)
-                resp = self.client.chat_image(DETECT_PROMPT, buffer.getvalue())
-                items.extend(self._parse_response(
-                    resp, page_no, tile_size, (x0, y0), (w, h),
-                ))
+            x0, y0, x1, y1 = self._center_tile(w, h)
+            buffer = io.BytesIO()
+            im.crop((x0, y0, x1, y1)).save(buffer, format="PNG")
+            tile_size = (x1 - x0, y1 - y0)
+            resp = self.client.chat_image(DETECT_PROMPT, buffer.getvalue(), max_tokens=512)
+            items.extend(self._parse_response(
+                resp, page_no, tile_size, (x0, y0), (w, h),
+            ))
         return self._finalize(items, page_no, (w, h))
 
     @staticmethod
-    def _overlapping_tiles(width: int, height: int) -> list[tuple[int, int, int, int]]:
-        tile_width = max(1, round(width * 0.7))
-        tile_height = max(1, round(height * 0.7))
-        x_offsets = (0, width - tile_width)
-        y_offsets = (0, height - tile_height)
-        return [
-            (x0, y0, x0 + tile_width, y0 + tile_height)
-            for y0 in y_offsets
-            for x0 in x_offsets
-        ]
+    def _center_tile(width: int, height: int) -> tuple[int, int, int, int]:
+        tile_width = max(1, round(width * 0.8))
+        tile_height = max(1, round(height * 0.8))
+        x0 = (width - tile_width) // 2
+        y0 = (height - tile_height) // 2
+        return x0, y0, x0 + tile_width, y0 + tile_height
 
     @staticmethod
     def _parse_response(
@@ -176,7 +171,7 @@ class BitmapFallbackDetector(FigureDetector):
             crop = page_png.parent / f"_cls_{page_no}_{i}.png"
             try:
                 crop_page_region(page_png, px, crop)
-                resp = self.client.chat_image(CLASSIFY_PROMPT, crop.read_bytes())
+                resp = self.client.chat_image(CLASSIFY_PROMPT, crop.read_bytes(), max_tokens=64)
             finally:
                 crop.unlink(missing_ok=True)
             data = extract_json(resp) or {}
